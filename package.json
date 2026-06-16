@@ -1,0 +1,8 @@
+{
+  "name": "creative-performance-report",
+  "version": "1.0.0",
+  "private": true,
+  "type": "commonjs",
+  "engines": { "node": ">=18" },
+  "scripts": { "start": "node server.js" }
+}

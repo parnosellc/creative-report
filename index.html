@@ -1,0 +1,390 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Creative Performance — US vs ROW</title>
+<style>
+  :root { --bg:#0f1115; --card:#171a21; --line:#272b35; --txt:#e6e8ec; --mut:#8b93a1; --accent:#4f8cff; }
+  * { box-sizing: border-box; }
+  body { margin:0; font:15px/1.5 -apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif; background:var(--bg); color:var(--txt); }
+  .wrap { max-width:1180px; margin:0 auto; padding:28px 22px 90px; }
+  h1 { font-size:22px; margin:0 0 4px; }
+  .sub { color:var(--mut); margin:0 0 22px; font-size:13px; }
+  h2 { font-size:18px; margin:34px 0 4px; }
+  h3 { font-size:14px; color:var(--mut); text-transform:uppercase; letter-spacing:.05em; margin:20px 0 8px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:16px; margin-bottom:16px; }
+  .row { display:flex; flex-wrap:wrap; gap:16px; align-items:flex-end; }
+  label { display:block; font-size:12px; color:var(--mut); margin-bottom:5px; text-transform:uppercase; letter-spacing:.04em; }
+  input, select { background:#0f1218; color:var(--txt); border:1px solid var(--line); border-radius:8px; padding:9px 11px; font-size:14px; }
+  input[type=number] { width:90px; }
+  select { min-width:240px; }
+  button { background:var(--accent); color:#fff; border:0; border-radius:8px; padding:10px 18px; font-size:14px; font-weight:600; cursor:pointer; }
+  button.sec { background:#222732; }
+  button:disabled { opacity:.5; cursor:default; }
+  .map { display:none; }
+  .map.show { display:block; }
+  table { width:100%; border-collapse:collapse; font-size:14px; }
+  th, td { text-align:right; padding:8px 12px; border-bottom:1px solid var(--line); white-space:nowrap; vertical-align:middle; }
+  th:first-child, td:first-child { text-align:left; white-space:normal; }
+  th { color:var(--mut); font-size:12px; text-transform:uppercase; letter-spacing:.04em; }
+  tbody tr:hover { background:#1c2029; }
+  tfoot td { font-weight:700; border-top:2px solid var(--line); border-bottom:0; }
+  a { color:var(--accent); text-decoration:none; }
+  a:hover { text-decoration:underline; }
+  .adname { max-width:480px; }
+  .adid { font:11px ui-monospace,SFMono-Regular,Menlo,monospace; color:var(--mut); margin-top:2px; user-select:all; }
+  img.thumb { width:64px; height:64px; object-fit:cover; border-radius:6px; background:#0b0d12; display:block; }
+  .ph { width:64px; height:64px; border-radius:6px; background:#0b0d12; display:flex; align-items:center; justify-content:center; color:#3a4150; font-size:10px; }
+  details.grp { margin:16px 0; }
+  details.grp > summary { font-size:18px; font-weight:600; cursor:pointer; padding:10px 14px; background:#141821; border:1px solid var(--line); border-radius:10px; list-style:none; }
+  details.grp > summary::-webkit-details-marker { display:none; }
+  details.grp > summary::before { content:"▸"; color:var(--mut); margin-right:8px; display:inline-block; }
+  details.grp[open] > summary::before { content:"▾"; }
+  details.rep { margin:8px 0 8px 8px; }
+  details.rep > summary { font-size:13px; color:var(--mut); text-transform:uppercase; letter-spacing:.04em; cursor:pointer; padding:6px 0; list-style:none; }
+  details.rep > summary::-webkit-details-marker { display:none; }
+  details.rep > summary::before { content:"▸"; margin-right:6px; display:inline-block; }
+  details.rep[open] > summary::before { content:"▾"; }
+  .sub2 { font-size:14px; font-weight:600; color:var(--txt); margin:14px 0 2px 8px; }
+  .rank { color:var(--mut); font-size:12px; }
+  .mut { color:var(--mut); }
+  .err { color:#ff6b6b; padding:12px 0; white-space:pre-wrap; }
+  .hint { font-size:12px; color:var(--mut); margin-top:8px; }
+  .badge { display:inline-block; font-size:11px; padding:2px 8px; border-radius:999px; background:#1f2530; color:var(--mut); margin-left:8px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Creative Performance — US vs ROW</h1>
+  <p class="sub">Video ads split by funnel (FCVSL vs Toolkit) and country (US vs rest-of-world), both accounts combined, 1-day-click. Top spenders + up-n-comers for each of the 8 segments, plus a non-video catch-all (US+ROW combined). Ad names link into Ads Manager.</p>
+
+  <div class="card">
+    <div class="row">
+      <div><label>From</label><input type="date" id="since"></div>
+      <div><label>To</label><input type="date" id="until"></div>
+      <div><label>Rows / table</label><input type="number" id="rows" value="15" min="1" max="100"></div>
+      <div><label>Min sales (up-n-comers)</label><input type="number" id="minSales" value="5" min="1"></div>
+      <div><label>Up-n-comers only: created in last (days)</label><input type="number" id="createdDays" value="30" min="1"></div>
+      <div><button id="run">Run report</button></div>
+    </div>
+    <div class="hint">Default window is the last 14 days. Widen the dates and re-run for longer periods. Dates use each ad account's time zone. <b>Note:</b> the "created in last (days)" filter applies <b>only to the up-n-comer tables</b> — top-spender tables and the catch-all section ignore ad age.</div>
+  </div>
+
+  <div class="card map" id="mapCard">
+    <div class="row">
+      <div><label>Count this as a "sale"</label><select id="saleEvent"></select></div>
+      <div><button class="sec" id="csv">Download CSV</button></div>
+      <div><button class="sec" id="snap">Create shareable snapshot</button></div>
+    </div>
+    <div class="hint">Default is the FB pixel purchase. Switch to your Hyros custom conversion to attribute on that — events are sorted by volume with counts shown. Changing it updates every table instantly. <b>Snapshot</b> downloads a frozen, token-free HTML with thumbnails you can send to colleagues — it makes no API calls when opened.</div>
+  </div>
+
+  <div id="out"></div>
+</div>
+
+<script>
+// ============================================================
+//  Your settings — already filled in. Nothing to do here.
+// ============================================================
+// The server holds the token; the page only talks to its own API at this path.
+const API = location.pathname.replace(/\/+$/,"");
+// ============================================================
+
+let DATA = null;
+const $ = (id) => document.getElementById(id);
+const money = (n) => "$" + (n||0).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
+const num = (n) => Math.round(n||0).toLocaleString();
+const cpaTxt = (s,c) => c>0 ? money(s/c) : "<span class='mut'>—</span>";
+const esc = (s) => String(s||"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+function actionValue(a,w){ if(a[w]!=null)return parseFloat(a[w])||0; if(a.value!=null)return parseFloat(a.value)||0; return 0; }
+function chunk(arr,n){ const out=[]; for(let i=0;i<arr.length;i+=n)out.push(arr.slice(i,i+n)); return out; }
+function accounts(){ return CONFIG.ACCOUNT_IDS.split(",").map(s=>s.trim()).filter(Boolean).map(s=>s.startsWith("act_")?s:"act_"+s); }
+
+// Classify a creative: is it a (fresh) video ad? plus a human label.
+// Post-ID ads (built from an existing post) are treated as NOT video.
+function classify(c){
+  const spec=c.object_story_spec||{};
+  const ld=spec.link_data||{};
+  const isPID=!!c.object_story_id && !spec.video_data && !spec.link_data && !spec.photo_data;
+  const isVideo = !isPID && (!!spec.video_data || (!!c.video_id && !c.object_story_id));
+  let type="Other";
+  if(isVideo) type="Video";
+  else if(isPID) type="Post (PID)";
+  else if(Array.isArray(ld.child_attachments) && ld.child_attachments.length>1) type="Carousel";
+  else if(spec.photo_data || spec.link_data) type="Image";
+  else if(c.object_story_id) type="Post (PID)";
+  else if(c.object_type) type=c.object_type.charAt(0)+c.object_type.slice(1).toLowerCase();
+  return { isVideo, type };
+}
+
+(function initDates(){ const t=new Date(), f=new Date(); f.setDate(t.getDate()-14);
+  const fmt=d=>d.toISOString().slice(0,10); $("until").value=fmt(t); $("since").value=fmt(f); })();
+
+$("run").addEventListener("click", run);
+$("saleEvent").addEventListener("change", render);
+$("rows").addEventListener("change", render);
+$("minSales").addEventListener("change", render);
+$("createdDays").addEventListener("change", render);
+$("csv").addEventListener("click", downloadCsv);
+$("snap").addEventListener("click", makeSnapshot);
+
+async function pull(since, until){
+  $("out").innerHTML="<p class='mut'>Pulling from the server… (results cached up to 45 min)</p>";
+  const r=await fetch(API+"/api/report?since="+encodeURIComponent(since)+"&until="+encodeURIComponent(until));
+  const j=await r.json();
+  if(j.error) throw new Error(j.error);
+  return j;
+}
+
+async function run(){
+  const since=$("since").value, until=$("until").value;
+  $("run").disabled=true; $("run").textContent="Pulling…";
+  $("out").innerHTML="<p class='mut'>Talking to Meta…</p>"; $("mapCard").classList.remove("show");
+  try{
+    DATA=await pull(since,until);
+    buildDropdown(); $("mapCard").classList.add("show"); render();
+  }catch(e){ $("out").innerHTML="<p class='err'>"+esc(e.message)+"</p>"; }
+  finally{ $("run").disabled=false; $("run").textContent="Run report"; }
+}
+
+function buildDropdown(){
+  const opts=DATA.actionTypes.map(a=>"<option value='"+esc(a.type)+"'>"+esc(a.type)+" ("+num(a.total)+")</option>").join("");
+  $("saleEvent").innerHTML=opts||"<option value=''>(no purchase events found)</option>";
+  if(DATA.guessFb) $("saleEvent").value=DATA.guessFb;
+}
+
+function adsManagerUrl(r){
+  if(!r.acct) return "";
+  return "https://business.facebook.com/adsmanager/manage/ads?act="+encodeURIComponent(r.acct)+"&selected_ad_ids="+encodeURIComponent(r.id);
+}
+
+function regionRows(region, saleKey){
+  return DATA.rows.map(r=>{
+    const spend=r[region].spend||0;
+    const sales=saleKey?(r[region].actions[saleKey]||0):0;
+    return { id:r.id, name:r.name, funnel:r.funnel, acct:r.acct, created:r.created, isVideo:r.isVideo, type:r.type, spend, sales, cpa: sales>0?spend/sales:Infinity };
+  });
+}
+function combined(r, saleKey){
+  const spend=(r.US.spend||0)+(r.ROW.spend||0);
+  const sales=saleKey?((r.US.actions[saleKey]||0)+(r.ROW.actions[saleKey]||0)):0;
+  return { spend, sales, cpa: sales>0?spend/sales:Infinity };
+}
+
+const FUNNELS=[["FCVSL","FCVSL · Forced-Consumption VSL"],["Toolkit","Toolkit · Open page"]];
+const REGIONS=[["US","United States"],["ROW","Rest of World (ROW)"]];
+
+// Build the report as collapsible groups (US / ROW / Other formats), each with
+// blocks (funnel) holding tables. Shared by the live view, CSV, and snapshot.
+function buildSections(saleKey, rowsN, minSales, createdDays){
+  const cutoff=Date.now()-createdDays*86400000;
+  const hasCreated=DATA.rows.some(r=>r.created!=null);
+  const recent=(r)=> !hasCreated ? true : (r.created!=null && r.created>=cutoff);
+  const upTitle="Up-n-comers · ≥"+minSales+" sales, created ≤"+createdDays+"d ago, best CPA"+(hasCreated?"":" (creation dates unavailable — recency off)");
+  const groups=[];
+  for(const [rKey,rLabel] of REGIONS){
+    const blocks=[];
+    for(const [fKey,fLabel] of FUNNELS){
+      const all=regionRows(rKey, saleKey).filter(r=>r.isVideo && r.funnel===fKey);
+      const top={ title:"Top-spending video ads", kind:"spend", label:rLabel+" — "+fLabel+" — TOP SPENDERS (video)",
+        rows:all.filter(r=>r.spend>0).sort((a,b)=>b.spend-a.spend).slice(0,rowsN) };
+      const up={ title:upTitle, kind:"up", label:rLabel+" — "+fLabel+" — UP-N-COMERS (video, ≥"+minSales+" sales, ≤"+createdDays+"d)",
+        rows:all.filter(r=>r.sales>=minSales && recent(r)).sort((a,b)=>a.cpa-b.cpa).slice(0,rowsN) };
+      blocks.push({ sub:fLabel, tables:[top,up] });
+    }
+    groups.push({ name:rLabel, blocks });
+  }
+  // catch-all group: non-video, US + ROW combined, one list of up to 8
+  const nv=DATA.rows.filter(r=>!r.isVideo).map(r=>{ const c=combined(r,saleKey);
+    return { id:r.id, name:r.name, acct:r.acct, type:r.type, created:r.created, spend:c.spend, sales:c.sales, cpa:c.cpa }; });
+  const spend4=nv.filter(r=>r.spend>0).sort((a,b)=>b.spend-a.spend).slice(0,4).map(r=>({...r,reason:"Top spender"}));
+  const taken=new Set(spend4.map(r=>r.id));
+  const cpa4=nv.filter(r=>r.sales>=minSales && !taken.has(r.id)).sort((a,b)=>a.cpa-b.cpa).slice(0,4).map(r=>({...r,reason:"Efficient CPA"}));
+  const catchT={ title:"Top 4 spenders + 4 most-efficient CPA (≥"+minSales+" sales)", kind:"catch", label:"NON-VIDEO — US+ROW — TOP 4 SPEND + 4 EFFICIENT CPA", rows:spend4.concat(cpa4) };
+  groups.push({ name:"Other formats — non-video (US + ROW combined)", blocks:[{ sub:null, tables:[catchT] }] });
+  return groups;
+}
+
+function flatTables(groups){ return groups.flatMap(g=>g.blocks.flatMap(b=>b.tables)); }
+
+function thumbCellHtml(r){ return r.thumb ? "<img class='thumb' src='"+esc(r.thumb)+"' loading='lazy' alt=''>" : "<div class='ph'>no img</div>"; }
+
+// Just the card+table (no heading) — the title lives in the <summary>.
+function tableInner(list, kind, withThumb){
+  const isCatch=kind==="catch";
+  const lead=(withThumb?1:0)+1+(isCatch?1:0);
+  const cols=lead+3+(isCatch?1:0);
+  let head="<tr>"+(withThumb?"<th></th>":"")+"<th>Ad name</th>"+(isCatch?"<th>Type</th>":"")+"<th>Spend</th><th>Sales</th><th>CPA</th>"+(isCatch?"<th>Pick</th>":"")+"</tr>";
+  let h="<div class='card'><table><thead>"+head+"</thead><tbody>";
+  if(!list.length){ h+="<tr><td class='mut' colspan='"+cols+"'>No ads"+(kind==="up"?" with enough sales / recent enough":"")+" in this window.</td></tr>"; }
+  let ts=0, tc=0;
+  list.forEach((r,i)=>{ ts+=r.spend; tc+=r.sales;
+    const u=adsManagerUrl(r);
+    const nameCell=u ? "<a href='"+esc(u)+"' target='_blank' rel='noopener'>"+esc(r.name)+"</a>" : esc(r.name);
+    h+="<tr>"+(withThumb?"<td>"+thumbCellHtml(r)+"</td>":"")
+      + "<td class='adname'><span class='rank'>"+(i+1)+". </span>"+nameCell+"<div class='adid'>"+esc(r.id)+"</div></td>"
+      + (isCatch?"<td class='mut'>"+esc(r.type||"")+"</td>":"")
+      + "<td>"+money(r.spend)+"</td><td>"+num(r.sales)+"</td><td>"+cpaTxt(r.spend,r.sales)+"</td>"
+      + (isCatch?"<td class='mut'>"+esc(r.reason||"")+"</td>":"")
+      + "</tr>";
+  });
+  if(list.length) h+="</tbody><tfoot><tr><td colspan='"+lead+"'>Total</td><td>"+money(ts)+"</td><td>"+num(tc)+"</td><td>"+cpaTxt(ts,tc)+"</td>"+(isCatch?"<td></td>":"")+"</tr></tfoot>";
+  else h+="</tbody>";
+  return h+"</table></div>";
+}
+
+// One collapsible report.
+function reportDetails(t, withThumb){
+  const n=t.rows.length;
+  return "<details class='rep' open><summary>"+esc(t.title)+"<span class='badge'>"+n+" ad"+(n===1?"":"s")+"</span></summary>"+tableInner(t.rows,t.kind,withThumb)+"</details>";
+}
+
+// All groups → collapsible HTML (used by both the live view and the snapshot).
+function renderGroups(groups, withThumb){
+  let html="";
+  for(const g of groups){
+    html+="<details class='grp' open><summary>"+esc(g.name)+"</summary>";
+    for(const b of g.blocks){
+      if(b.sub) html+="<div class='sub2'>"+esc(b.sub)+"</div>";
+      for(const t of b.tables) html+=reportDetails(t, withThumb);
+    }
+    html+="</details>";
+  }
+  return html;
+}
+
+function controls(){ return {
+  saleKey:$("saleEvent").value,
+  rowsN:Math.max(1, parseInt($("rows").value)||15),
+  minSales:Math.max(1, parseInt($("minSales").value)||5),
+  createdDays:Math.max(1, parseInt($("createdDays").value)||30),
+}; }
+
+function render(){
+  if(!DATA) return;
+  const c=controls();
+  const groups=buildSections(c.saleKey,c.rowsN,c.minSales,c.createdDays);
+  $("out").innerHTML=renderGroups(groups, false);
+}
+
+function downloadCsv(){
+  if(!DATA) return;
+  const c=controls();
+  const groups=buildSections(c.saleKey,c.rowsN,c.minSales,c.createdDays);
+  const cdate=(r)=> r.created!=null ? new Date(r.created).toISOString().slice(0,10) : "";
+  const lines=[];
+  for(const t of flatTables(groups)){
+    lines.push(t.label);
+    lines.push("Rank,Ad name,Ad ID,Type,Created,Spend,Sales,CPA,Pick,Ads Manager URL");
+    t.rows.forEach((r,i)=>lines.push([i+1,'"'+String(r.name).replace(/"/g,'""')+'"',r.id,r.type||"",cdate(r),r.spend.toFixed(2),Math.round(r.sales),r.sales>0?(r.spend/r.sales).toFixed(2):"",r.reason||"",'"'+adsManagerUrl(r)+'"'].join(",")));
+    lines.push("");
+  }
+  const a=document.createElement("a"); a.href=URL.createObjectURL(new Blob([lines.join("\n")],{type:"text/csv"}));
+  a.download="creative-performance-"+$("since").value+"_to_"+$("until").value+".csv"; a.click();
+}
+
+// ---------- Shareable snapshot (frozen, token-free, with thumbnails) ----------
+async function makeSnapshot(){
+  if(!DATA) return;
+  const btn=$("snap"); const old=btn.textContent; btn.disabled=true; btn.textContent="Building snapshot…";
+  try{
+    const c=controls();
+    const groups=buildSections(c.saleKey,c.rowsN,c.minSales,c.createdDays);
+    const ids=[...new Set(flatTables(groups).flatMap(t=>t.rows.map(r=>r.id)))];
+    // base64 thumbnails from the server (token-side) → snapshot is fully self-contained
+    const tr=await fetch(API+"/api/thumbs?ids="+encodeURIComponent(ids.join(",")));
+    const thumbByAd=await tr.json();
+    if(thumbByAd.error) throw new Error(thumbByAd.error);
+    for(const t of flatTables(groups)) for(const r of t.rows) r.thumb=thumbByAd[r.id]||"";
+    const meta={ since:$("since").value, until:$("until").value, saleEvent:c.saleKey, minSales:c.minSales, createdDays:c.createdDays, generated:new Date().toLocaleString() };
+    const doc=buildSnapshotDoc(groups, meta);
+    const sr=await fetch(API+"/api/snapshot",{method:"POST",headers:{"Content-Type":"text/html"},body:doc});
+    const sj=await sr.json();
+    if(sj.error) throw new Error(sj.error);
+    showShareLink(location.origin+sj.path);
+  }catch(e){ alert("Snapshot failed: "+e.message); }
+  finally{ btn.disabled=false; btn.textContent=old; }
+}
+function showShareLink(link){
+  let box=document.getElementById("sharebox");
+  if(!box){ box=document.createElement("div"); box.id="sharebox"; box.className="hint"; box.style.marginTop="10px"; $("snap").parentNode.appendChild(box); }
+  box.innerHTML="Shareable link (no token, auto-deletes in 90 days):<br><a href='"+link+"' target='_blank'>"+link+"</a> &nbsp; <button id='copylink' class='sec'>Copy</button>";
+  const cp=document.getElementById("copylink");
+  if(cp) cp.addEventListener("click",()=>{ try{navigator.clipboard.writeText(link);}catch(_){} cp.textContent="Copied"; });
+}
+
+function buildSnapshotDoc(groups, meta){
+  const body=renderGroups(groups, true);
+  // data embedded for the viewer's CSV download (no token, no API)
+  const flat=flatTables(groups).map(t=>({ label:t.label, rows:t.rows.map(r=>({
+    n:r.name, id:r.id, type:r.type||"", created:r.created!=null?new Date(r.created).toISOString().slice(0,10):"",
+    spend:r.spend, sales:r.sales, reason:r.reason||"", acct:r.acct||"" })) }));
+  const dataJson=JSON.stringify(flat).replace(/</g,"\\u003c");
+  const header="<h1>Creative Performance — Snapshot</h1>"
+    + "<p class='sub'>"+esc(meta.since)+" → "+esc(meta.until)+" &nbsp;·&nbsp; sale event: "+esc(meta.saleEvent)
+    + " &nbsp;·&nbsp; up-n-comer: ≥"+meta.minSales+" sales, ≤"+meta.createdDays+"d old &nbsp;·&nbsp; generated "+esc(meta.generated)+"</p>"
+    + "<p class='froze'>Static snapshot — frozen data, no live connection, no API calls.</p>";
+  const topbar="<div class='snaptop'><div>"+header+"</div><button id='snapcsv' class='dlbtn'>Download CSV</button></div>";
+  return "<!doctype html><html lang='en'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width, initial-scale=1'><title>Creative Performance Snapshot</title><style>"+SNAP_CSS+"</style></head><body><div class='wrap'>"+topbar+body+"</div><script>var SNAP_DATA="+dataJson+";"+SNAP_SCRIPT+"</script></body></html>";
+}
+
+// Runs inside the snapshot file: builds a CSV from the embedded SNAP_DATA.
+const SNAP_SCRIPT=`
+(function(){
+  var b=document.getElementById('snapcsv'); if(!b) return;
+  b.addEventListener('click',function(){
+    var lines=[];
+    for(var ti=0;ti<SNAP_DATA.length;ti++){ var t=SNAP_DATA[ti];
+      lines.push(t.label);
+      lines.push('Rank,Ad name,Ad ID,Type,Created,Spend,Sales,CPA,Pick,Ads Manager URL');
+      for(var i=0;i<t.rows.length;i++){ var r=t.rows[i];
+        var url=r.acct?('https://business.facebook.com/adsmanager/manage/ads?act='+r.acct+'&selected_ad_ids='+r.id):'';
+        lines.push([i+1,'"'+String(r.n).replace(/"/g,'""')+'"',r.id,r.type,r.created,Number(r.spend).toFixed(2),Math.round(r.sales),r.sales>0?(r.spend/r.sales).toFixed(2):'',r.reason,'"'+url+'"'].join(','));
+      }
+      lines.push('');
+    }
+    var blob=new Blob([lines.join(String.fromCharCode(10))],{type:'text/csv'});
+    var a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='creative-performance-snapshot.csv'; a.click();
+  });
+})();
+`;
+
+const SNAP_CSS=`
+  :root{--bg:#0f1115;--card:#171a21;--line:#272b35;--txt:#e6e8ec;--mut:#8b93a1;--accent:#4f8cff;}
+  *{box-sizing:border-box;} body{margin:0;font:15px/1.5 -apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--txt);}
+  .wrap{max-width:1180px;margin:0 auto;padding:28px 22px 90px;}
+  h1{font-size:22px;margin:0 0 4px;} h2{font-size:18px;margin:34px 0 4px;}
+  h3{font-size:14px;color:var(--mut);text-transform:uppercase;letter-spacing:.05em;margin:20px 0 8px;}
+  .sub{color:var(--mut);margin:0 0 6px;font-size:13px;} .froze{color:var(--accent);font-size:12px;margin:0 0 18px;}
+  .snaptop{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap;}
+  .dlbtn{background:#222732;color:var(--txt);border:1px solid var(--line);border-radius:8px;padding:10px 18px;font-size:14px;font-weight:600;cursor:pointer;white-space:nowrap;}
+  .dlbtn:hover{background:#2a3140;}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;margin-bottom:16px;}
+  table{width:100%;border-collapse:collapse;font-size:14px;}
+  th,td{text-align:right;padding:8px 12px;border-bottom:1px solid var(--line);white-space:nowrap;vertical-align:middle;}
+  th:first-child,td:first-child{text-align:left;white-space:normal;}
+  th{color:var(--mut);font-size:12px;text-transform:uppercase;letter-spacing:.04em;}
+  tfoot td{font-weight:700;border-top:2px solid var(--line);border-bottom:0;}
+  a{color:var(--accent);text-decoration:none;} a:hover{text-decoration:underline;}
+  .adname{max-width:420px;} .rank{color:var(--mut);font-size:12px;} .mut{color:var(--mut);}
+  .adid{font:11px ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--mut);margin-top:2px;user-select:all;}
+  .badge{display:inline-block;font-size:11px;padding:2px 8px;border-radius:999px;background:#1f2530;color:var(--mut);margin-left:8px;}
+  img.thumb{width:64px;height:64px;object-fit:cover;border-radius:6px;background:#0b0d12;display:block;}
+  .ph{width:64px;height:64px;border-radius:6px;background:#0b0d12;display:flex;align-items:center;justify-content:center;color:#3a4150;font-size:10px;}
+  details.grp{margin:16px 0;}
+  details.grp>summary{font-size:18px;font-weight:600;cursor:pointer;padding:10px 14px;background:#141821;border:1px solid var(--line);border-radius:10px;list-style:none;}
+  details.grp>summary::-webkit-details-marker{display:none;}
+  details.grp>summary::before{content:"▸";color:var(--mut);margin-right:8px;display:inline-block;}
+  details.grp[open]>summary::before{content:"▾";}
+  details.rep{margin:8px 0 8px 8px;}
+  details.rep>summary{font-size:13px;color:var(--mut);text-transform:uppercase;letter-spacing:.04em;cursor:pointer;padding:6px 0;list-style:none;}
+  details.rep>summary::-webkit-details-marker{display:none;}
+  details.rep>summary::before{content:"▸";margin-right:6px;display:inline-block;}
+  details.rep[open]>summary::before{content:"▾";}
+  .sub2{font-size:14px;font-weight:600;color:var(--txt);margin:14px 0 2px 8px;}
+`;
+</script>
+</body>
+</html>
