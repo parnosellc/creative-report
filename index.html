@@ -32,10 +32,13 @@
   tfoot td { font-weight:700; border-top:2px solid var(--line); border-bottom:0; }
   a { color:var(--accent); text-decoration:none; }
   a:hover { text-decoration:underline; }
-  .adname { max-width:480px; }
+  .adname { max-width:480px; white-space:normal; word-break:break-word; overflow-wrap:anywhere; }
+  td.adname, th:nth-child(2) { white-space:normal; }
   .adid { font:11px ui-monospace,SFMono-Regular,Menlo,monospace; color:var(--mut); margin-top:2px; user-select:all; }
   img.thumb { width:64px; height:64px; object-fit:cover; border-radius:6px; background:#0b0d12; display:block; }
   .ph { width:64px; height:64px; border-radius:6px; background:#0b0d12; display:flex; align-items:center; justify-content:center; color:#3a4150; font-size:10px; }
+  .datainfo { background:#11161f; border:1px solid var(--line); border-left:3px solid var(--accent); border-radius:8px; padding:10px 14px; margin:0 0 18px; font-size:13px; color:var(--mut); }
+  .datainfo b { color:var(--txt); }
   .loading { display:flex; align-items:center; gap:12px; color:var(--txt); font-size:15px; padding:20px 0; }
   .spinner { width:22px; height:22px; border:3px solid var(--line); border-top-color:var(--accent); border-radius:50%; animation:spin 0.8s linear infinite; flex:none; }
   @keyframes spin { to { transform:rotate(360deg); } }
@@ -163,6 +166,22 @@ function adsManagerUrl(r){
   return "https://business.facebook.com/adsmanager/manage/ads?act="+encodeURIComponent(r.acct)+"&selected_ad_ids="+encodeURIComponent(r.id);
 }
 
+// Human-readable label for the chosen sale event.
+function saleLabelPretty(key){
+  if(!key) return "(no purchase event selected)";
+  if(key.indexOf("offsite_conversion.custom.")===0) return key+" — Hyros / custom conversion";
+  if(key==="offsite_conversion.fb_pixel_purchase"||key==="purchase"||key==="omni_purchase"||key==="onsite_web_purchase") return key+" — FB pixel purchase";
+  return key;
+}
+// One-line description of what the numbers represent.
+function dataInfoHtml(saleKey, since, until){
+  return "<div class='datainfo'>"
+    + "<b>Sales</b> &amp; <b>CPA</b> = spend ÷ <b>"+esc(saleLabelPretty(saleKey))+"</b>"
+    + " &nbsp;·&nbsp; attribution: <b>1-day click</b> (no view-through) "
+    + " &nbsp;·&nbsp; window: <b>"+esc(since)+" → "+esc(until)+"</b>"
+    + " &nbsp;·&nbsp; both ad accounts combined</div>";
+}
+
 function regionRows(region, saleKey){
   return DATA.rows.map(r=>{
     const spend=r[region].spend||0;
@@ -269,7 +288,7 @@ function render(){
   if(!DATA) return;
   const c=controls();
   const groups=buildSections(c.saleKey,c.rowsN,c.minSales,c.createdDays);
-  $("out").innerHTML=renderGroups(groups, false);
+  $("out").innerHTML=dataInfoHtml(c.saleKey,$("since").value,$("until").value)+renderGroups(groups, false);
 }
 
 function downloadCsv(){
@@ -326,8 +345,8 @@ function buildSnapshotDoc(groups, meta){
     spend:r.spend, sales:r.sales, reason:r.reason||"", acct:r.acct||"" })) }));
   const dataJson=JSON.stringify(flat).replace(/</g,"\\u003c");
   const header="<h1>Creative Performance — Snapshot</h1>"
-    + "<p class='sub'>"+esc(meta.since)+" → "+esc(meta.until)+" &nbsp;·&nbsp; sale event: "+esc(meta.saleEvent)
-    + " &nbsp;·&nbsp; up-n-comer: ≥"+meta.minSales+" sales, ≤"+meta.createdDays+"d old &nbsp;·&nbsp; generated "+esc(meta.generated)+"</p>"
+    + dataInfoHtml(meta.saleEvent, meta.since, meta.until)
+    + "<p class='sub'>up-n-comer: ≥"+meta.minSales+" sales, ≤"+meta.createdDays+"d old &nbsp;·&nbsp; generated "+esc(meta.generated)+"</p>"
     + "<p class='froze'>Static snapshot — frozen data, no live connection, no API calls.</p>";
   const topbar="<div class='snaptop'><div>"+header+"</div><button id='snapcsv' class='dlbtn'>Download CSV</button></div>";
   return "<!doctype html><html lang='en'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width, initial-scale=1'><title>Creative Performance Snapshot</title><style>"+SNAP_CSS+"</style></head><body><div class='wrap'>"+topbar+body+"</div><script>var SNAP_DATA="+dataJson+";"+SNAP_SCRIPT+"<\/script></body></html>";
@@ -361,6 +380,7 @@ const SNAP_CSS=`
   h1{font-size:22px;margin:0 0 4px;} h2{font-size:18px;margin:34px 0 4px;}
   h3{font-size:14px;color:var(--mut);text-transform:uppercase;letter-spacing:.05em;margin:20px 0 8px;}
   .sub{color:var(--mut);margin:0 0 6px;font-size:13px;} .froze{color:var(--accent);font-size:12px;margin:0 0 18px;}
+  .datainfo{background:#11161f;border:1px solid var(--line);border-left:3px solid var(--accent);border-radius:8px;padding:10px 14px;margin:10px 0 18px;font-size:13px;color:var(--mut);} .datainfo b{color:var(--txt);}
   .snaptop{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap;}
   .dlbtn{background:#222732;color:var(--txt);border:1px solid var(--line);border-radius:8px;padding:10px 18px;font-size:14px;font-weight:600;cursor:pointer;white-space:nowrap;}
   .dlbtn:hover{background:#2a3140;}
@@ -371,7 +391,7 @@ const SNAP_CSS=`
   th{color:var(--mut);font-size:12px;text-transform:uppercase;letter-spacing:.04em;}
   tfoot td{font-weight:700;border-top:2px solid var(--line);border-bottom:0;}
   a{color:var(--accent);text-decoration:none;} a:hover{text-decoration:underline;}
-  .adname{max-width:420px;} .rank{color:var(--mut);font-size:12px;} .mut{color:var(--mut);}
+  .adname{max-width:360px;white-space:normal;word-break:break-word;overflow-wrap:anywhere;} td.adname{white-space:normal;} .rank{color:var(--mut);font-size:12px;} .mut{color:var(--mut);}
   .adid{font:11px ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--mut);margin-top:2px;user-select:all;}
   .badge{display:inline-block;font-size:11px;padding:2px 8px;border-radius:999px;background:#1f2530;color:var(--mut);margin-left:8px;}
   img.thumb{width:64px;height:64px;object-fit:cover;border-radius:6px;background:#0b0d12;display:block;}
