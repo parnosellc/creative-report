@@ -55,7 +55,9 @@
   .sub2 { font-size:14px; font-weight:600; color:var(--txt); margin:14px 0 2px 8px; }
   .rank { color:var(--mut); font-size:12px; }
   .mut { color:var(--mut); }
-  .err { color:#ff6b6b; padding:12px 0; white-space:pre-wrap; }
+  .err { color:#ff6b6b; padding:12px 14px; white-space:pre-wrap; font:12px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace; background:#1a1113; border:1px solid #3a2226; border-radius:8px; margin:8px 0 0; user-select:all; }
+  .errbox { margin:12px 0; }
+  .errhead { display:flex; align-items:center; gap:12px; color:#ff8a8a; font-size:14px; font-weight:600; }
   .hint { font-size:12px; color:var(--mut); margin-top:8px; }
   .badge { display:inline-block; font-size:11px; padding:2px 8px; border-radius:999px; background:#1f2530; color:var(--mut); margin-left:8px; }
 </style>
@@ -137,11 +139,37 @@ $("csv").addEventListener("click", downloadCsv);
 $("snap").addEventListener("click", makeSnapshot);
 
 async function pull(since, until){
-  $("out").innerHTML="<div class='loading'><div class='spinner'></div><div>Pulling ad performance from Meta… first run can take 20–40s. Results cache for 45 min after that.</div></div>";
-  const r=await fetch(API+"/api/report?since="+encodeURIComponent(since)+"&until="+encodeURIComponent(until));
-  const j=await r.json();
-  if(j.error) throw new Error(j.error);
-  return j;
+  $("out").innerHTML="<div class='loading'><div class='spinner'></div><div id='loadmsg'>Pulling ad performance from Meta… 0s</div></div>";
+  const t0=Date.now();
+  const url=API+"/api/report?since="+encodeURIComponent(since)+"&until="+encodeURIComponent(until);
+  const tick=setInterval(()=>{ const el=document.getElementById("loadmsg"); if(el) el.textContent="Pulling ad performance from Meta… "+Math.round((Date.now()-t0)/1000)+"s (first run can take 20–40s; cached 45 min after)"; },1000);
+  const ctrl=new AbortController();
+  const TIMEOUT_MS=180000;
+  const killer=setTimeout(()=>ctrl.abort(), TIMEOUT_MS);
+  const secs=()=>Math.round((Date.now()-t0)/1000);
+  try{
+    let r;
+    try{
+      r=await fetch(url,{signal:ctrl.signal});
+    }catch(e){
+      if(e&&e.name==="AbortError")
+        throw new Error("TIMEOUT after "+secs()+"s (client aborted at "+(TIMEOUT_MS/1000)+"s).\nThe server never responded. The pull is likely too big for one request.\nGET "+url+"\nname=AbortError");
+      throw new Error("NETWORK / connection dropped after "+secs()+"s.\nThe browser couldn't complete the request to the server (this is the \"Failed to fetch\" case — the connection was cut, not a server error message).\nLikely: cold start, OR the pull ran long and Railway closed the connection, OR the server restarted mid-pull.\nGET "+url+"\nname="+(e&&e.name||"?")+" | message="+(e&&e.message||String(e)));
+    }
+    if(!r.ok){
+      let body=""; try{ body=await r.text(); }catch(_){ body="(could not read body)"; }
+      let parsed=""; try{ const j=JSON.parse(body); if(j&&j.error) parsed=j.error; }catch(_){}
+      const gw=(r.status===502||r.status===503||r.status===504)?"\nThis is a GATEWAY status — the server took too long / was unavailable; the pull probably exceeded the platform timeout. A shorter date range should work; long ranges need a background-job pull.":"";
+      throw new Error("HTTP "+r.status+" "+r.statusText+" after "+secs()+"s."+gw+"\nGET "+url+"\n"+(parsed?("server error: "+parsed):("body: "+String(body).slice(0,500))));
+    }
+    let j;
+    try{ j=await r.json(); }
+    catch(e){ let body=""; try{ body=await r.text(); }catch(_){}; throw new Error("Got a non-JSON response (HTTP "+r.status+") after "+secs()+"s — likely an error page.\nGET "+url+"\nbody: "+String(body).slice(0,500)); }
+    if(j.error) throw new Error("Server returned an error after "+secs()+"s:\n"+j.error+"\nGET "+url);
+    return j;
+  } finally {
+    clearInterval(tick); clearTimeout(killer);
+  }
 }
 
 async function run(){
@@ -152,7 +180,11 @@ async function run(){
     DATA=await pull(since,until);
     DATA.rows=aggregateAds(DATA.rows);   // clean ad names + merge duplicates
     buildDropdown(); $("mapCard").classList.add("show"); render();
-  }catch(e){ $("out").innerHTML="<p class='err'>"+esc(e.message)+"</p>"; }
+  }catch(e){
+    const msg="["+new Date().toISOString()+"] "+((e&&e.message)||String(e));
+    $("out").innerHTML="<div class='errbox'><div class='errhead'><span>⚠ Report failed — copy this and send it over:</span> <button id='copyerr' class='sec'>Copy error</button></div><pre class='err'>"+esc(msg)+"</pre></div>";
+    const cb=document.getElementById("copyerr"); if(cb) cb.addEventListener("click",()=>{ try{navigator.clipboard.writeText(msg);}catch(_){} cb.textContent="Copied ✓"; });
+  }
   finally{ $("run").disabled=false; $("run").textContent="Run report"; }
 }
 
