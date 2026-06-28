@@ -150,9 +150,44 @@ async function run(){
   $("out").innerHTML="<p class='mut'>Talking to Meta…</p>"; $("mapCard").classList.remove("show");
   try{
     DATA=await pull(since,until);
+    DATA.rows=aggregateAds(DATA.rows);   // clean ad names + merge duplicates
     buildDropdown(); $("mapCard").classList.add("show"); render();
   }catch(e){ $("out").innerHTML="<p class='err'>"+esc(e.message)+"</p>"; }
   finally{ $("run").disabled=false; $("run").textContent="Run report"; }
+}
+
+// Strip campaign-naming prefix + " - Copy", keep the creative filename.
+function cleanAdName(raw){
+  let s=String(raw||"").trim();
+  for(let i=0;i<3;i++){ s=s.replace(/\s*[-–—]\s*Copy(\s*\d+)?\s*$/i,"").trim(); }
+  const re=/(?:WD_|fc[_-]?mgo[_-]?|tk[_-]?MGO|tk[_-]?mgo|JOR_|KZ_|JOC_|SHA_|JER_|MGO_)[A-Za-z0-9._\-]*\.(?:mp4|mov|m4v|jpe?g|png|gif|webp)/i;
+  const hit=s.match(re);
+  return hit ? hit[0] : s;
+}
+
+// Merge ads that share a cleaned name (within the same funnel, so the FCVSL/Toolkit
+// split stays correct). Sums spend + actions, collects every underlying ad id.
+function aggregateAds(rows){
+  const g=new Map();
+  for(const r of rows){
+    const cn=cleanAdName(r.name);
+    const key=r.funnel+"||"+cn;
+    if(!g.has(key)) g.set(key,{ id:r.id, ids:[], acctIds:{}, acct:r.acct, name:cn, funnel:r.funnel, created:r.created, isVideo:r.isVideo, type:r.type, _top:-1, US:{spend:0,actions:{}}, ROW:{spend:0,actions:{}} });
+    const x=g.get(key);
+    for(const reg of ["US","ROW"]){ x[reg].spend+=r[reg].spend||0; for(const[t,v] of Object.entries(r[reg].actions||{})) x[reg].actions[t]=(x[reg].actions[t]||0)+v; }
+    (x.acctIds[r.acct]=x.acctIds[r.acct]||[]).push(r.id);
+    if(r.created!=null && (x.created==null || r.created>x.created)) x.created=r.created;
+    const tot=(r.US.spend||0)+(r.ROW.spend||0);
+    if(tot>x._top){ x._top=tot; x.id=r.id; x.acct=r.acct; }
+    if(r.isVideo) x.isVideo=true;
+  }
+  const out=[];
+  for(const x of g.values()){
+    out.push({ id:x.id, ids:(x.acctIds[x.acct]||[x.id]), name:x.name, funnel:x.funnel, acct:x.acct, created:x.created, isVideo:x.isVideo, type:x.type,
+      US:{spend:Math.round(x.US.spend*100)/100, actions:x.US.actions},
+      ROW:{spend:Math.round(x.ROW.spend*100)/100, actions:x.ROW.actions} });
+  }
+  return out;
 }
 
 function buildDropdown(){
@@ -163,7 +198,8 @@ function buildDropdown(){
 
 function adsManagerUrl(r){
   if(!r.acct) return "";
-  return "https://business.facebook.com/adsmanager/manage/ads?act="+encodeURIComponent(r.acct)+"&selected_ad_ids="+encodeURIComponent(r.id);
+  const ids=(r.ids&&r.ids.length)?r.ids.join(","):r.id;
+  return "https://business.facebook.com/adsmanager/manage/ads?act="+encodeURIComponent(r.acct)+"&selected_ad_ids="+encodeURIComponent(ids);
 }
 
 // Human-readable label for the chosen sale event.
@@ -218,9 +254,16 @@ function buildSections(saleKey, rowsN, minSales, createdDays){
     }
     groups.push({ name:rLabel, blocks });
   }
-  // catch-all group: non-video, US + ROW combined, one list of up to 8
-  const nv=DATA.rows.filter(r=>!r.isVideo).map(r=>{ const c=combined(r,saleKey);
-    return { id:r.id, name:r.name, acct:r.acct, type:r.type, created:r.created, spend:c.spend, sales:c.sales, cpa:c.cpa }; });
+  // catch-all group: non-video, US + ROW combined, one list of up to 8.
+  // Re-merge by name here (a creative can sit in two funnel groups) so it appears once.
+  const nvMap=new Map();
+  for(const r of DATA.rows.filter(r=>!r.isVideo)){
+    const c=combined(r,saleKey);
+    if(!nvMap.has(r.name)) nvMap.set(r.name,{ id:r.id, ids:(r.ids||[r.id]).slice(), name:r.name, acct:r.acct, type:r.type, created:r.created, spend:0, sales:0, _top:-1 });
+    const x=nvMap.get(r.name); x.spend+=c.spend; x.sales+=c.sales;
+    if(c.spend>x._top){ x._top=c.spend; x.id=r.id; x.acct=r.acct; x.ids=(r.ids||[r.id]).slice(); }
+  }
+  const nv=[...nvMap.values()].map(r=>({ ...r, cpa: r.sales>0?r.spend/r.sales:Infinity }));
   const spend4=nv.filter(r=>r.spend>0).sort((a,b)=>b.spend-a.spend).slice(0,4).map(r=>({...r,reason:"Top spender"}));
   const taken=new Set(spend4.map(r=>r.id));
   const cpa4=nv.filter(r=>r.sales>=minSales && !taken.has(r.id)).sort((a,b)=>a.cpa-b.cpa).slice(0,4).map(r=>({...r,reason:"Efficient CPA"}));
