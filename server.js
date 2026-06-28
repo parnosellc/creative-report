@@ -111,13 +111,30 @@ async function pullReport(since, until){
 
 // 45-min cache keyed by date range
 const reportCache = new Map();
-async function getReport(since, until){
-  const key = since + "|" + until;
+// Background jobs so a single HTTP request never blocks long enough to hit
+// Railway's ~120s edge timeout. The client polls; the pull runs detached.
+const jobs = new Map(); // key -> { status:'running'|'done'|'error', data, error, startedAt }
+function reportKey(since, until){ return since + "|" + until; }
+
+// Non-blocking: returns the current state immediately, kicking off a pull if needed.
+function startOrPoll(since, until){
+  const key = reportKey(since, until);
   const hit = reportCache.get(key);
-  if (hit && (Date.now() - hit.ts) < CACHE_TTL_MS) return hit.data;
-  const data = await pullReport(since, until);
-  reportCache.set(key, { data, ts: Date.now() });
-  return data;
+  if (hit && (Date.now() - hit.ts) < CACHE_TTL_MS) return { status:"done", data: hit.data };
+
+  const job = jobs.get(key);
+  if (job){
+    if (job.status === "running") return { status:"running", elapsed: Date.now() - job.startedAt };
+    if (job.status === "done")    return { status:"done", data: job.data };
+    if (job.status === "error"){ jobs.delete(key); /* fall through and restart */ }
+  }
+
+  const startedAt = Date.now();
+  jobs.set(key, { status:"running", startedAt });
+  pullReport(since, until)
+    .then(data => { reportCache.set(key, { data, ts: Date.now() }); jobs.set(key, { status:"done", data, startedAt }); })
+    .catch(e  => { jobs.set(key, { status:"error", error: String(e && e.message || e), startedAt }); });
+  return { status:"running", elapsed: 0 };
 }
 
 // ---------- thumbnails → base64 data URLs (token-side, no CORS issues) ----------
@@ -205,7 +222,7 @@ async function handler(req, res){
       const since = u.searchParams.get("since"), until = u.searchParams.get("until");
       if(!since || !until) throw new Error("Missing date range.");
       if(!FB_TOKEN) throw new Error("Server missing CPR_FB_TOKEN.");
-      return json(res, 200, await getReport(since, until));
+      return json(res, 200, startOrPoll(since, until)); // returns instantly: {status:'running'|'done'|'error'}
     } catch(e){ return json(res, 500, { error: e.message }); }
   }
 
