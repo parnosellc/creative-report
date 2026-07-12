@@ -193,12 +193,18 @@ async function run(){
 }
 
 // Strip campaign-naming prefix + " - Copy", keep the creative filename.
+// 3 passes, in order: (1) known creative-code conventions (tk_ / fc_mgo, extension optional),
+// (2) any recognised creative filename with a media extension, (3) strip the campaign
+// wrapper up to the LAST -watch- / -toolkit-N- segment. Falls back to the raw name.
 function cleanAdName(raw){
   let s=String(raw||"").trim();
   for(let i=0;i<3;i++){ s=s.replace(/\s*[-–—]\s*Copy(\s*\d+)?\s*$/i,"").trim(); }
-  const re=/(?:WD_|fc[_-]?mgo[_-]?|tk[_-]?MGO|tk[_-]?mgo|JOR_|KZ_|JOC_|SHA_|JER_|MGO_)[A-Za-z0-9._\-]*\.(?:mp4|mov|m4v|jpe?g|png|gif|webp)/i;
-  const hit=s.match(re);
-  return hit ? hit[0] : s;
+  const code=/(tk_[A-Za-z0-9]+_SL\d+_SM\d+_SC\d+[A-Za-z0-9._]*|fc_mgo_[A-Za-z0-9]+[-_]SL\d+[-_]SM\d+[-_]SC\d+[A-Za-z0-9._\-]*)/i;
+  let hit=s.match(code); if(hit) return hit[0];
+  const file=/(?:WD_|fc[_-]?mgo[_-]?|tk[_-]?mgo|JOR_|KZ_|JOC_|SHA_|JER_|MGO_)[A-Za-z0-9._\-]*\.(?:mp4|mov|m4v|jpe?g|png|gif|webp)/i;
+  hit=s.match(file); if(hit) return hit[0];
+  const wrap=s.match(/^.*-(?:watch|toolkit-\d+)-(.+)$/i); if(wrap) return wrap[1].trim();
+  return s;
 }
 
 // Merge ads that share a cleaned name (within the same funnel, so the FCVSL/Toolkit
