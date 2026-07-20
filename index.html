@@ -225,7 +225,9 @@ function aggregateAds(rows){
     const x=g.get(key);
     for(const reg of ["US","ROW"]){ x[reg].spend+=r[reg].spend||0; for(const[t,v] of Object.entries(r[reg].actions||{})) x[reg].actions[t]=(x[reg].actions[t]||0)+v; }
     (x.acctIds[r.acct]=x.acctIds[r.acct]||[]).push(r.id);
-    if(r.created!=null && (x.created==null || r.created>x.created)) x.created=r.created;
+    // EARLIEST launch across all merged ad IDs = when this creative first went live.
+    // (A relaunched old winner must not inherit its newest ad's date and look "up-n-coming".)
+    if(r.created!=null && (x.created==null || r.created<x.created)) x.created=r.created;
     const tot=(r.US.spend||0)+(r.ROW.spend||0);
     if(tot>x._top){ x._top=tot; x.id=r.id; x.acct=r.acct; x.name=disp; }
     if(r.isVideo) x.isVideo=true;
