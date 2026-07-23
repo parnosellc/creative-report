@@ -7,6 +7,10 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,Bl
 .wrap{max-width:1060px;margin:0 auto;padding:44px 30px 70px}
 h1{font-size:32px;font-weight:800;letter-spacing:-.01em;margin:0 0 6px}
 .intro{color:var(--mut);font-size:15px;margin:0 0 16px;max-width:800px}
+.about{background:#0f171d;border:1px solid #1c2a33;border-radius:12px;padding:18px 22px;margin:2px 0 18px;max-width:840px}
+.about p{color:#aeb7c2;font-size:14px;line-height:1.65;margin:0 0 11px}
+.about p:last-child{margin-bottom:0}
+.about b{color:#e6ecf2}
 .updated{font-size:12.5px;color:var(--mut);background:#0f171d;border:1px solid #1c2a33;border-radius:8px;padding:8px 12px;display:inline-block}
 .updated b{color:#cbd5e1;font-weight:700}
 .bar{display:flex;align-items:center;gap:12px;margin:20px 0 6px;flex-wrap:wrap}
@@ -48,7 +52,12 @@ tr:hover td{background:#131c25}
 footer{color:var(--dim);font-size:11.5px;margin-top:26px;border-top:1px solid var(--line);padding-top:14px;line-height:1.6}
 </style></head><body><div class="wrap">
 <h1>Segment Performance</h1>
-<p class="intro">How each modular block performs, pooled across every creative it appears in. Hooks span both funnels; bodies and CTAs split TK vs FCVSL. <b>7d</b> = last 7 days vs lifetime on each section's headline metric. Top-5 winners link to the segment video in Drive. Shown only if used in 2+ creatives with 4+ purchases.</p>
+<div class="about">
+<p><b>What this is.</b> Every ad is built from three reusable parts: a <b>hook</b> (the first few seconds that stop the scroll), a <b>body</b> (the main pitch), and a <b>call-to-action</b> (the closing ask). We reuse these parts across many different ads. This report scores each <b>part on its own</b> — not the whole ad — so we can see which hooks, bodies, and calls-to-action are actually driving sales.</p>
+<p><b>Why it matters.</b> Once we know the best parts, we can build new ads out of proven pieces instead of guessing — a winning hook + a winning body + a winning ask. More winners, less wasted spend.</p>
+<p><b>How we picked the winners.</b> A part only appears here if it was used in at least 2 different ads and produced at least 4 sales — enough to be a real signal, not luck. Hooks are scored on grabbing attention and earning clicks; bodies and calls-to-action on turning those clicks into sales (and how cheaply). <b style="color:var(--up)">Green</b> means better than average, <b style="color:var(--down)">red</b> means worse; the small arrow shows whether it improved or slipped in the last 7 days.</p>
+<p><b>How it's laid out.</b> Three sections — <b>Hooks</b>, <b>Bodies</b>, <b>Calls-to-action</b>. Bodies and calls-to-action appear twice, once for each of our two funnels, because the same part can convert differently depending on where the click leads. Tags: <b style="color:var(--up)">proven</b> = works at scale, <b style="color:var(--cyan)">use more</b> = strong but barely used (make more of it), <b>thin</b> = not enough data yet to trust. Click any top pick to watch the actual clip.</p>
+</div>
 <div class="updated">🕓 Updated <b id="up"></b> · data through <b id="th"></b></div>
 <div class="bar">
   <button class="exp" onclick="exportCSV()">⬇ Export CSV</button>
