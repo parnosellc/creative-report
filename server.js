@@ -194,6 +194,7 @@ function json(res, code, obj){ send(res, code, "application/json", JSON.stringif
 function readBody(req){ return new Promise((resolve)=>{ let d=""; req.on("data",c=>{ d+=c; if(d.length>8e6) req.destroy(); }); req.on("end",()=>resolve(d)); }); }
 
 const INDEX_HTML = fs.readFileSync(path.join(__dirname, "index.html"), "utf8");
+let SEG_HTML=""; try{ SEG_HTML=fs.readFileSync(path.join(__dirname, "segment-report.html"),"utf8"); }catch(e){ SEG_HTML="Segment report not built yet."; }
 
 async function handler(req, res){
   const u = new URL(req.url, "http://x");
@@ -208,6 +209,9 @@ async function handler(req, res){
 
   // health check (handy for debugging)
   if (parts[0] === "healthz") return json(res, 200, { ok:true, accounts: FB_ACCOUNTS.length, tokenSet: !!FB_TOKEN });
+
+  // segment performance report (static, public random path)
+  if (parts[0] === "segments-72a49538") return send(res, 200, "text/html; charset=utf-8", SEG_HTML);
 
   // everything else is gated behind the secret path segment
   if (parts[0] !== SECRET) return send(res, 404, "text/plain", "Not found.");
