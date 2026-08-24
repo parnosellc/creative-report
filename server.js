@@ -118,7 +118,7 @@ async function pullCreatorsReport(since, until){
     await Promise.all(FB_ACCOUNTS.map(async (acct) => {
       const acctNum = acct.replace("act_","");
       const p = new URLSearchParams({ level:"ad",
-        fields:"ad_id,ad_name,spend,impressions,inline_link_clicks,actions,video_3_sec_watched_actions",
+        fields:"ad_id,ad_name,spend,impressions,inline_link_clicks,actions,video_play_actions",
         action_attribution_windows: JSON.stringify([ATTRIBUTION]),
         time_range: JSON.stringify({since:s, until:u}), limit:"1000", access_token: FB_TOKEN });
       let url = `${FB_GRAPH}/${acct}/insights?${p}`;
@@ -131,7 +131,7 @@ async function pullCreatorsReport(since, until){
           const purch = (r.actions||[]).filter(a =>
             ["offsite_conversion.fb_pixel_purchase","purchase","omni_purchase","onsite_web_purchase"].includes(a.action_type)
           ).reduce((s,a)=>s + actionValue(a, ATTRIBUTION), 0);
-          const v3 = (r.video_3_sec_watched_actions||[]).reduce((s,a)=>s+actionValue(a, ATTRIBUTION),0);
+          const v3 = (r.video_play_actions||[]).reduce((s,a)=>s+actionValue(a, ATTRIBUTION),0);
           ads.set(id, {
             id, name: r.ad_name || id, acct: acctNum,
             spend: parseFloat(r.spend)||0,
