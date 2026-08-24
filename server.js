@@ -109,6 +109,88 @@ async function pullReport(since, until){
   return { rows, actionTypes, guessFb };
 }
 
+// ---------- CREATORS: pull with expanded fields (impressions, link_clicks, video 3-sec) ----------
+async function pullCreatorsReport(since, until){
+  // Also pull a "last 7 days of window" comparison, if the window is >7 days
+  const CREATORS = ["Aura Booker","Stephane Brazeau","Lynda olsen"];
+  async function pullWindow(s, u){
+    const ads = new Map();
+    await Promise.all(FB_ACCOUNTS.map(async (acct) => {
+      const acctNum = acct.replace("act_","");
+      const p = new URLSearchParams({ level:"ad",
+        fields:"ad_id,ad_name,spend,impressions,inline_link_clicks,actions,video_3_sec_watched_actions",
+        action_attribution_windows: JSON.stringify([ATTRIBUTION]),
+        time_range: JSON.stringify({since:s, until:u}), limit:"1000", access_token: FB_TOKEN });
+      let url = `${FB_GRAPH}/${acct}/insights?${p}`;
+      let pages = 0;
+      while (url){
+        const json = await fbGet(url);
+        if (json.error) throw new Error(`Facebook error on ${acct}: ${json.error.message}`);
+        for (const r of json.data || []){
+          const id = r.ad_id; if(!id) continue;
+          const purch = (r.actions||[]).filter(a =>
+            ["offsite_conversion.fb_pixel_purchase","purchase","omni_purchase","onsite_web_purchase"].includes(a.action_type)
+          ).reduce((s,a)=>s + actionValue(a, ATTRIBUTION), 0);
+          const v3 = (r.video_3_sec_watched_actions||[]).reduce((s,a)=>s+actionValue(a, ATTRIBUTION),0);
+          ads.set(id, {
+            id, name: r.ad_name || id, acct: acctNum,
+            spend: parseFloat(r.spend)||0,
+            impressions: parseInt(r.impressions)||0,
+            linkClicks: parseInt(r.inline_link_clicks)||0,
+            v3sec: v3,
+            purchases: purch,
+          });
+        }
+        pages++; url = json.paging && json.paging.next ? json.paging.next : null; if(pages>400) break;
+      }
+    }));
+    return [...ads.values()];
+  }
+
+  // Full window
+  const rows = await pullWindow(since, until);
+  // Filter to only ads matching one of the 3 creators (huge reduction in thumbnail fetching)
+  const matches = rows.filter(r => CREATORS.some(c => (r.name||"").toLowerCase().includes(c.toLowerCase())));
+
+  // Last 7 days (or the tail of a shorter window)
+  let rows7d = [];
+  const untilD = new Date(until); const sinceD = new Date(since);
+  if ((untilD - sinceD) > 7*86400000){
+    const s7 = new Date(untilD); s7.setDate(s7.getDate()-6);
+    const s7str = s7.toISOString().slice(0,10);
+    const all7 = await pullWindow(s7str, until);
+    rows7d = all7.filter(r => matches.some(m => m.id === r.id));
+  }
+
+  // Fetch thumbnails for matching ads (small set)
+  const thumbs = await thumbsBase64(matches.map(r => r.id));
+  for (const r of matches) r.thumb = thumbs[r.id] || "";
+
+  return { rows: matches, rows7d };
+}
+
+// creators job cache
+const creatorsCache = new Map();
+const creatorsJobs = new Map();
+function creatorsKey(s,u){ return s + "|" + u; }
+function startOrPollCreators(since, until){
+  const key = creatorsKey(since, until);
+  const hit = creatorsCache.get(key);
+  if (hit && (Date.now() - hit.ts) < CACHE_TTL_MS) return { status:"done", data: hit.data };
+  const job = creatorsJobs.get(key);
+  if (job){
+    if (job.status === "running") return { status:"running", elapsed: Date.now() - job.startedAt };
+    if (job.status === "done") return { status:"done", data: job.data };
+    if (job.status === "error"){ creatorsJobs.delete(key); }
+  }
+  const startedAt = Date.now();
+  creatorsJobs.set(key, { status:"running", startedAt });
+  pullCreatorsReport(since, until)
+    .then(data => { creatorsCache.set(key, { data, ts: Date.now() }); creatorsJobs.set(key, { status:"done", data, startedAt }); })
+    .catch(e => { creatorsJobs.set(key, { status:"error", error: String(e && e.message || e), startedAt }); });
+  return { status:"running", elapsed: 0 };
+}
+
 // 45-min cache keyed by date range
 const reportCache = new Map();
 // Background jobs so a single HTTP request never blocks long enough to hit
@@ -194,6 +276,7 @@ function json(res, code, obj){ send(res, code, "application/json", JSON.stringif
 function readBody(req){ return new Promise((resolve)=>{ let d=""; req.on("data",c=>{ d+=c; if(d.length>8e6) req.destroy(); }); req.on("end",()=>resolve(d)); }); }
 
 const INDEX_HTML = fs.readFileSync(path.join(__dirname, "index.html"), "utf8");
+const CREATORS_HTML = fs.readFileSync(path.join(__dirname, "creators.html"), "utf8");
 let SEG_HTML=""; try{ SEG_HTML=fs.readFileSync(path.join(__dirname, "segment-report.html"),"utf8"); }catch(e){ SEG_HTML="Segment report not built yet."; }
 
 async function handler(req, res){
@@ -217,6 +300,17 @@ async function handler(req, res){
   if (parts[0] !== SECRET) return send(res, 404, "text/plain", "Not found.");
 
   const sub = parts.slice(1); // after secret
+
+  // creators (3-series) report UI + API
+  if (sub[0] === "creators" && sub.length === 1) return send(res, 200, "text/html; charset=utf-8", CREATORS_HTML);
+  if (sub[0] === "creators" && sub[1] === "api" && sub[2] === "report"){
+    try {
+      const since = u.searchParams.get("since"), until = u.searchParams.get("until");
+      if(!since || !until) throw new Error("Missing date range.");
+      if(!FB_TOKEN) throw new Error("Server missing CPR_FB_TOKEN.");
+      return json(res, 200, startOrPollCreators(since, until));
+    } catch(e){ return json(res, 500, { error: e.message }); }
+  }
 
   // live report UI
   if (sub.length === 0) return send(res, 200, "text/html; charset=utf-8", INDEX_HTML);

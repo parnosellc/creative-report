@@ -1,0 +1,211 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex,nofollow">
+<title>Creator Series Performance</title><style>
+ :root{--bg:#0d1117;--card:#161b22;--line:#232a34;--ink:#e6edf3;--mut:#8b949e;--teal:#2dd4bf;--up:#3fb950;--down:#f85149;--gold:#d4a72c}
+ *{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+ .wrap{max-width:960px;margin:0 auto;padding:34px 20px 70px}
+ h1{font-size:26px;margin:0 0 6px}
+ .intro{color:var(--mut);font-size:14.5px;line-height:1.6;max-width:780px;margin:0 0 10px} .intro b{color:var(--ink)}
+ .defs{font-size:12px;color:var(--mut);border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding:10px 0;margin:16px 0 22px}
+ .card{display:flex;gap:16px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:14px}
+ .thumb{flex:0 0 128px;width:128px} .thumb img{width:128px;border-radius:10px;display:block;border:1px solid var(--line)}
+ .noimg{width:128px;height:165px;border-radius:10px;border:1px dashed var(--line);color:var(--mut);display:flex;align-items:center;justify-content:center;text-align:center;font-size:12px}
+ .body{flex:1;min-width:0}
+ .head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+ .sname{font-size:22px;font-weight:700;letter-spacing:.02em} .sub{color:var(--mut);font-size:12.5px;margin-top:2px}
+ .spend{text-align:right;font-size:18px;font-weight:600;color:var(--gold);white-space:nowrap} .spend span{display:block;font-size:11px;color:var(--mut);font-weight:400}
+ .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:14px 0 6px}
+ .stat{background:#0d1117;border:1px solid var(--line);border-radius:10px;padding:9px 11px}
+ .stat label{font-size:10.5px;color:var(--mut);text-transform:uppercase;letter-spacing:.04em}
+ .stat b{display:block;font-size:21px;margin:2px 0} .l7{font-size:11.5px;color:var(--mut)}
+ .tr{font-weight:600;margin-left:2px} .tr.up{color:var(--up)} .tr.down{color:var(--down)} .tr.flat{color:var(--mut)}
+ .tops{margin-top:10px;border-top:1px solid var(--line);padding-top:10px}
+ .topslabel{font-size:11px;color:var(--mut);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px}
+ .ad{padding:5px 0} .ad+.ad{border-top:1px dashed var(--line)}
+ .adname{font-size:12.5px;font-family:ui-monospace,Menlo,monospace;color:var(--teal);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+ .adm{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--mut);margin-top:2px} .muted{color:var(--mut)}
+ .l7l{color:var(--mut)}
+ details.allads{margin-top:8px;border-top:1px dashed var(--line);padding-top:6px}
+ details.allads>summary{list-style:none;cursor:pointer;font-size:11px;color:var(--mut);text-transform:uppercase;letter-spacing:.05em;display:flex;align-items:center;gap:7px}
+ details.allads[open]>summary .ar{transform:rotate(90deg)} details.allads .ar{display:inline-block;transition:.15s}
+ .cta{background:linear-gradient(90deg,rgba(45,212,191,.12),rgba(45,212,191,.03));border:1px solid #22343a;border-radius:10px;padding:11px 14px;font-size:13.5px;margin:6px 0 10px}
+ .cta a{color:var(--teal);font-weight:600;text-decoration:none}
+ .fbar{display:flex;gap:8px;margin:18px 0 2px;flex-wrap:wrap}
+ .fp{cursor:pointer;font-size:12.5px;padding:6px 15px;border-radius:999px;border:1px solid #22343a;color:var(--mut);user-select:none;font-weight:600;transition:.12s}
+ .fp.on{background:var(--teal);border-color:var(--teal);color:#04211d}
+ .fp:hover:not(.on){border-color:var(--teal);color:var(--teal)}
+ .controls{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px 14px;margin-bottom:16px;display:flex;gap:14px;flex-wrap:wrap;align-items:end}
+ .controls .fld{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--mut)}
+ .controls input[type=date]{background:#0d1117;border:1px solid var(--line);color:var(--ink);padding:6px 8px;border-radius:6px;font-size:13px;font-family:inherit}
+ .controls button{background:var(--teal);color:#04211d;border:none;padding:8px 16px;border-radius:8px;font-weight:700;cursor:pointer;font-size:13px;font-family:inherit}
+ .controls button:hover{filter:brightness(1.08)}
+ .status{color:var(--mut);font-size:13px;margin:8px 0}
+ .empty{color:var(--mut);font-style:italic;padding:20px;background:var(--card);border:1px solid var(--line);border-radius:10px}
+ footer{margin-top:26px;font-size:12px;color:var(--mut);text-align:center}
+</style>
+</head><body><div class="wrap">
+  <h1>Creator Series Performance</h1>
+  <p class="intro">Ads grouped by <b>creator name substring</b> — Aura Booker, Stephane Brazeau, Lynda olsen. Any ad whose name contains one of the three strings gets pulled into that creator's series. Data pulled live from Meta, both ad accounts combined, 1-day-click attribution. <b>7-day</b> stats compare the last 7 days of your window to the full window.</p>
+  <div class="controls">
+    <div class="fld"><label>From</label><input type="date" id="since"></div>
+    <div class="fld"><label>To</label><input type="date" id="until"></div>
+    <button id="run">Run report</button>
+  </div>
+  <div class="status" id="status">Loading…</div>
+  <div class="fbar" id="filters" style="display:none">
+    <div class="fp on" data-f="all">All</div>
+    <div class="fp" data-f="Aura Booker">Aura Booker</div>
+    <div class="fp" data-f="Stephane Brazeau">Stephane Brazeau</div>
+    <div class="fp" data-f="Lynda olsen">Lynda olsen</div>
+  </div>
+  <div id="out"></div>
+  <footer id="foot"></footer>
+</div>
+<script>
+const CREATORS = ["Aura Booker","Stephane Brazeau","Lynda olsen"];
+const API = location.pathname.replace(/\/+$/,"").replace(/\/creators$/, "") + "/creators";
+const $ = id => document.getElementById(id);
+function fmtMoney(n){ return "$" + Math.round(n||0).toLocaleString(); }
+function fmtMoney2(n){ return "$" + (n||0).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}); }
+function fmtPct(n){ return (Math.round((n||0)*100)/100).toFixed(2) + "%"; }
+function trendClass(a,b){ if(!isFinite(a)||!isFinite(b)||b===0) return "flat"; const d=(a-b)/b; if(Math.abs(d)<0.02) return "flat"; return d>0?"up":"down"; }
+function trendArrow(cls){ return cls==="up"?"▲":cls==="down"?"▼":"—"; }
+function trendDelta(a,b){ if(!isFinite(a)||!isFinite(b)||b===0) return "—"; const d=(a-b)/b*100; return (d>=0?"+":"") + d.toFixed(1) + "%"; }
+// For CPA lower is better; invert coloring:
+function invertCls(cls){ return cls==="up"?"down":cls==="down"?"up":"flat"; }
+function esc(s){ return String(s||"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
+
+function seed7d(){
+  // last 7 days ending yesterday
+  const d = new Date(); d.setDate(d.getDate()-1);
+  const u = d.toISOString().slice(0,10);
+  d.setDate(d.getDate()-29);
+  const s = d.toISOString().slice(0,10);
+  $("since").value = s; $("until").value = u;
+}
+
+async function run(){
+  $("status").textContent = "Pulling from Meta…";
+  $("out").innerHTML = "";
+  $("filters").style.display = "none";
+  const since = $("since").value, until = $("until").value;
+  if(!since || !until){ $("status").textContent = "Set a date range."; return; }
+  // poll pattern like creative-report
+  const start = Date.now();
+  while (true){
+    const r = await fetch(`${API}/api/report?since=${since}&until=${until}`).then(r=>r.json());
+    if (r.error){ $("status").textContent = "Error: " + r.error; return; }
+    if (r.status === "done"){ render(r.data, since, until); return; }
+    if (r.status === "running"){
+      $("status").textContent = `Pulling from Meta… (${Math.round((Date.now()-start)/1000)}s)`;
+      await new Promise(x=>setTimeout(x,2000));
+    } else { $("status").textContent = "Unexpected: " + JSON.stringify(r); return; }
+  }
+}
+
+function bucketByCreator(rows){
+  const buckets = new Map(CREATORS.map(c => [c, []]));
+  for (const r of rows){
+    for (const c of CREATORS){
+      if ((r.name||"").toLowerCase().includes(c.toLowerCase())){ buckets.get(c).push(r); break; }
+    }
+  }
+  return buckets;
+}
+function aggregate(ads){
+  let spend=0, imp=0, links=0, v3=0, purch=0;
+  for (const a of ads){ spend+=a.spend||0; imp+=a.impressions||0; links+=a.linkClicks||0; v3+=a.v3sec||0; purch+=a.purchases||0; }
+  return {
+    spend, imp, links, v3, purch,
+    cpa: purch>0 ? spend/purch : NaN,
+    hook: imp>0 ? (v3/imp)*100 : NaN,
+    ctr:  imp>0 ? (links/imp)*100 : NaN,
+    cpc:  links>0 ? spend/links : NaN,
+  };
+}
+
+function render(data, since, until){
+  $("status").textContent = "";
+  $("filters").style.display = "flex";
+  const rowsAll = data.rows7d ? mergeWindows(data.rows, data.rows7d) : data.rows.map(r=>({...r, _7d:null}));
+  const buckets = bucketByCreator(rowsAll);
+  const out = [];
+  for (const c of CREATORS){
+    const ads = buckets.get(c);
+    if (!ads.length){
+      out.push(`<div class="card" data-cat="${esc(c)}"><div class="body"><div class="head"><div><div class="sname">${esc(c)}</div><div class="sub">no ads matched</div></div></div></div></div>`);
+      continue;
+    }
+    const totals = aggregate(ads);
+    const totals7 = aggregate(ads.map(r => r._7d).filter(Boolean));
+    // pick a thumb: highest-spend ad's thumbnail
+    ads.sort((a,b)=>b.spend-a.spend);
+    const thumbUrl = ads.find(a=>a.thumb)?.thumb || "";
+    const topAds = ads.slice(0,3);
+    const allAds = ads;
+
+    const st = (label, val, val7, delta7, invert=false) => {
+      const cls = invert ? invertCls(trendClass(val7,val)) : trendClass(val7,val);
+      const arrow = trendArrow(cls);
+      const pct = trendDelta(val7,val);
+      return `<div class="stat"><label>${label}</label><b>${val === "—" ? "—" : val}</b><div class="l7"><span class="l7l">7d</span> ${val7 === "—" ? "—" : val7} <span class="tr ${cls}">${arrow} ${pct}</span></div></div>`;
+    };
+    const cpaStr = isFinite(totals.cpa) ? fmtMoney(totals.cpa) : "—";
+    const cpa7Str = isFinite(totals7.cpa) ? fmtMoney(totals7.cpa) : "—";
+    const hookStr = isFinite(totals.hook) ? fmtPct(totals.hook) : "—";
+    const hook7Str = isFinite(totals7.hook) ? fmtPct(totals7.hook) : "—";
+    const ctrStr = isFinite(totals.ctr) ? fmtPct(totals.ctr) : "—";
+    const ctr7Str = isFinite(totals7.ctr) ? fmtPct(totals7.ctr) : "—";
+    const cpcStr = isFinite(totals.cpc) ? fmtMoney2(totals.cpc) : "—";
+    const cpc7Str = isFinite(totals7.cpc) ? fmtMoney2(totals7.cpc) : "—";
+    const adRow = (a) => {
+      const ag = aggregate([a]);
+      const parts = [
+        `<span>${fmtMoney(a.spend)}</span>`,
+        `<span>CPA ${isFinite(ag.cpa)?fmtMoney(ag.cpa):"—"}</span>`,
+        `<span>Hook ${isFinite(ag.hook)?fmtPct(ag.hook):"—"}</span>`,
+        `<span>CTR ${isFinite(ag.ctr)?fmtPct(ag.ctr):"—"}</span>`,
+      ];
+      return `<div class="ad"><div class="adname" title="${esc(a.name)}"><span class="mtag">🎬</span> ${esc(a.name)}</div><div class="adm">${parts.join("")}</div></div>`;
+    };
+    const topsHtml = topAds.map(adRow).join("");
+    const allHtml = allAds.map(adRow).join("");
+
+    out.push(`<div class="card" data-cat="${esc(c)}">
+      <div class="thumb">${thumbUrl ? `<img src="${esc(thumbUrl)}" alt="">` : `<div class="noimg">no thumb</div>`}</div>
+      <div class="body">
+        <div class="head"><div><div class="sname">${esc(c)}</div>
+          <div class="sub">${ads.length} ad${ads.length===1?"":"s"} · ${fmtMoney(totals.purch)} purchases</div></div>
+          <div class="spend">${fmtMoney(totals.spend)}<span>window spend</span></div></div>
+        <div class="stats">
+          ${st("CPA", cpaStr, cpa7Str, null, true)}
+          ${st("Hook rate", hookStr, hook7Str, null, false)}
+          ${st("Link CTR", ctrStr, ctr7Str, null, false)}
+          ${st("CPC (link)", cpcStr, cpc7Str, null, true)}
+        </div>
+        <div class="tops"><div class="topslabel">Top ads</div>${topsHtml}
+          ${allAds.length > 3 ? `<details class="allads"><summary><span class="ar">▸</span>All ${allAds.length} ads</summary><div>${allHtml}</div></details>` : ""}
+        </div>
+      </div>
+    </div>`);
+  }
+  $("out").innerHTML = out.join("");
+  $("foot").textContent = `Window ${since} → ${until} · both ad accounts combined · 1-day-click · pulled ${new Date().toLocaleString()}`;
+}
+
+function mergeWindows(full, w7){
+  const by = new Map(full.map(r => [r.id, {...r, _7d:null}]));
+  for (const r of w7){ if (by.has(r.id)) by.get(r.id)._7d = r; }
+  return [...by.values()];
+}
+
+document.querySelectorAll(".fp").forEach(p => p.addEventListener("click", () => {
+  document.querySelectorAll(".fp").forEach(x=>x.classList.remove("on"));
+  p.classList.add("on");
+  const f = p.dataset.f;
+  document.querySelectorAll(".card").forEach(c => c.style.display = (f==="all"||c.dataset.cat===f)?"":"none");
+}));
+
+$("run").addEventListener("click", run);
+seed7d(); run();
+</script></body></html>
