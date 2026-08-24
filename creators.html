@@ -45,19 +45,24 @@
 </style>
 </head><body><div class="wrap">
   <h1>Growi Creator Leaders board</h1>
-  <p class="intro">Ads grouped by <b>creator name substring</b> — Aura Booker, Stephane Brazeau, Lynda olsen. Any ad whose name contains one of the three strings gets pulled into that creator's series. Data pulled live from Meta, both ad accounts combined, 1-day-click attribution. <b>7-day</b> stats compare the last 7 days of your window to the full window.</p>
-  <div class="controls">
-    <div class="fld"><label>From</label><input type="date" id="since"></div>
-    <div class="fld"><label>To</label><input type="date" id="until"></div>
-    <button id="run">Run report</button>
+  <div class="updated">🕓 Last updated <b id="updatedAt">just now</b> · window <b id="windowLbl">last 30 days</b> · pulled live from Meta</div>
+  <p class="intro">Every ad launched by <b>Aura Booker</b>, <b>Stephane Brazeau</b>, or <b>Lynda olsen</b> is grouped into one <b>creator series</b> — matched by whether the ad name contains the creator's name. Each series is graded as one unit: <b>CPA</b>, <b>hook rate</b>, <b>link CTR</b>, <b>CPC</b>, how the last 7 days compare to the full window, and the top ads carrying it. Both ad accounts combined · 1-day-click attribution.</p>
+  <div class="cta">📊 Want to see the full creative library instead? → <a href="/mgo-creative-report-7f3k9q2x8w/" target="_blank">Open the full creative report</a></div>
+  <div class="fbar" id="filters">
+    <span class="fp on" data-f="all">All creators</span>
+    <span class="fp" data-f="Aura Booker">Aura Booker</span>
+    <span class="fp" data-f="Stephane Brazeau">Stephane Brazeau</span>
+    <span class="fp" data-f="Lynda olsen">Lynda olsen</span>
   </div>
+  <div class="defs"><b>CPA</b> = spend ÷ sales &nbsp;·&nbsp; <b>Hook</b> = 3-sec views ÷ impressions &nbsp;·&nbsp; <b>Link CTR</b> = link clicks ÷ impressions &nbsp;·&nbsp; <b>CPC</b> = spend ÷ link clicks &nbsp;·&nbsp; the small line under each metric compares the <b>last 7 days</b> against the full-window figure above it — green = improving</div>
+  <details class="daterange" style="margin:0 0 14px 0;font-size:12.5px;color:var(--mut)"><summary style="cursor:pointer;color:var(--teal)">Change window</summary>
+    <div class="controls" style="margin-top:8px">
+      <div class="fld"><label>From</label><input type="date" id="since"></div>
+      <div class="fld"><label>To</label><input type="date" id="until"></div>
+      <button id="run">Refresh</button>
+    </div>
+  </details>
   <div class="status" id="status">Loading…</div>
-  <div class="fbar" id="filters" style="display:none">
-    <div class="fp on" data-f="all">All</div>
-    <div class="fp" data-f="Aura Booker">Aura Booker</div>
-    <div class="fp" data-f="Stephane Brazeau">Stephane Brazeau</div>
-    <div class="fp" data-f="Lynda olsen">Lynda olsen</div>
-  </div>
   <div id="out"></div>
   <footer id="foot"></footer>
 </div>
@@ -191,6 +196,8 @@ function render(data, since, until){
   }
   $("out").innerHTML = out.join("");
   $("foot").textContent = `Window ${since} → ${until} · both ad accounts combined · 1-day-click · pulled ${new Date().toLocaleString()}`;
+  const upd = $("updatedAt"); if (upd) upd.textContent = new Date().toLocaleString();
+  const w = $("windowLbl"); if (w) w.textContent = `${since} → ${until}`;
 }
 
 function mergeWindows(full, w7){
