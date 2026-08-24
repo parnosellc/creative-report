@@ -181,13 +181,20 @@ function startOrPollCreators(since, until){
   if (job){
     if (job.status === "running") return { status:"running", elapsed: Date.now() - job.startedAt };
     if (job.status === "done") return { status:"done", data: job.data };
-    if (job.status === "error"){ creatorsJobs.delete(key); }
+    if (job.status === "error"){
+      // Return the error but DO NOT delete — user retries manually if desired
+      return { status:"error", error: job.error };
+    }
   }
   const startedAt = Date.now();
   creatorsJobs.set(key, { status:"running", startedAt });
   pullCreatorsReport(since, until)
     .then(data => { creatorsCache.set(key, { data, ts: Date.now() }); creatorsJobs.set(key, { status:"done", data, startedAt }); })
-    .catch(e => { creatorsJobs.set(key, { status:"error", error: String(e && e.message || e), startedAt }); });
+    .catch(e => {
+      const msg = String(e && e.stack || e && e.message || e);
+      console.error("[creators] pull failed:", msg);
+      creatorsJobs.set(key, { status:"error", error: msg, startedAt });
+    });
   return { status:"running", elapsed: 0 };
 }
 
