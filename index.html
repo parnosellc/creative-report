@@ -74,6 +74,7 @@
       <div><label>Rows / table</label><input type="number" id="rows" value="5" min="1" max="100"></div>
       <div><label>Min sales (up-n-comers)</label><input type="number" id="minSales" value="5" min="1"></div>
       <div><label>Up-n-comers only: created in last (days)</label><input type="number" id="createdDays" value="30" min="1"></div>
+      <div><label>Country breakdown</label><label style="display:flex;align-items:center;gap:6px;padding:6px 0;"><input type="checkbox" id="geoOn"> <span>US vs ROW split</span></label></div>
       <div><button id="run">Run report</button></div>
     </div>
     <div class="hint">Default window is the last 14 days. Widen the dates and re-run for longer periods. Dates use each ad account's time zone. <b>Note:</b> the "created in last (days)" filter applies <b>only to the up-n-comer tables</b> — top-spender tables and the catch-all section ignore ad age.</div>
@@ -287,23 +288,38 @@ const REGIONS=[["US","United States"],["ROW","Rest of World (ROW)"]];
 
 // Build the report as collapsible groups (US / ROW / Other formats), each with
 // blocks (funnel) holding tables. Shared by the live view, CSV, and snapshot.
-function buildSections(saleKey, rowsN, minSales, createdDays){
+function buildSections(saleKey, rowsN, minSales, createdDays, geoOn){
   const cutoff=Date.now()-createdDays*86400000;
   const hasCreated=DATA.rows.some(r=>r.created!=null);
   const recent=(r)=> !hasCreated ? true : (r.created!=null && r.created>=cutoff);
   const upTitle="Up-n-comers · ≥"+minSales+" sales, created ≤"+createdDays+"d ago, best CPA"+(hasCreated?"":" (creation dates unavailable — recency off)");
   const groups=[];
-  for(const [rKey,rLabel] of REGIONS){
-    const blocks=[];
-    for(const [fKey,fLabel] of FUNNELS){
-      const all=regionRows(rKey, saleKey).filter(r=>r.isVideo && r.funnel===fKey);
-      const top={ title:"Top-spending video ads", kind:"spend", label:rLabel+" — "+fLabel+" — TOP SPENDERS (video)",
-        rows:all.filter(r=>r.spend>0).sort((a,b)=>b.spend-a.spend).slice(0,rowsN) };
-      const up={ title:upTitle, kind:"up", label:rLabel+" — "+fLabel+" — UP-N-COMERS (video, ≥"+minSales+" sales, ≤"+createdDays+"d)",
-        rows:all.filter(r=>r.sales>=minSales && recent(r)).sort((a,b)=>a.cpa-b.cpa).slice(0,rowsN) };
-      blocks.push({ sub:fLabel, tables:[top,up] });
+  if(geoOn){
+    for(const [rKey,rLabel] of REGIONS){
+      const blocks=[];
+      for(const [fKey,fLabel] of FUNNELS){
+        const all=regionRows(rKey, saleKey).filter(r=>r.isVideo && r.funnel===fKey);
+        const top={ title:"Top-spending video ads", kind:"spend", label:rLabel+" — "+fLabel+" — TOP SPENDERS (video)",
+          rows:all.filter(r=>r.spend>0).sort((a,b)=>b.spend-a.spend).slice(0,rowsN) };
+        const up={ title:upTitle, kind:"up", label:rLabel+" — "+fLabel+" — UP-N-COMERS (video, ≥"+minSales+" sales, ≤"+createdDays+"d)",
+          rows:all.filter(r=>r.sales>=minSales && recent(r)).sort((a,b)=>a.cpa-b.cpa).slice(0,rowsN) };
+        blocks.push({ sub:fLabel, tables:[top,up] });
+      }
+      groups.push({ name:rLabel, blocks });
     }
-    groups.push({ name:rLabel, blocks });
+  } else {
+    // Country breakdown OFF: aggregate US+ROW, keep funnel + top/up-n-comers split.
+    for(const [fKey,fLabel] of FUNNELS){
+      const all=DATA.rows.filter(r=>r.isVideo && r.funnel===fKey).map(r=>{
+        const c=combined(r, saleKey);
+        return { id:r.id, ids:r.ids, name:r.name, funnel:r.funnel, acct:r.acct, created:r.created, isVideo:r.isVideo, type:r.type, spend:c.spend, sales:c.sales, cpa:c.cpa };
+      });
+      const top={ title:"Top-spending video ads", kind:"spend", label:fLabel+" — TOP SPENDERS (video, US+ROW combined)",
+        rows:all.filter(r=>r.spend>0).sort((a,b)=>b.spend-a.spend).slice(0,rowsN) };
+      const up={ title:upTitle, kind:"up", label:fLabel+" — UP-N-COMERS (video, ≥"+minSales+" sales, ≤"+createdDays+"d, US+ROW combined)",
+        rows:all.filter(r=>r.sales>=minSales && recent(r)).sort((a,b)=>a.cpa-b.cpa).slice(0,rowsN) };
+      groups.push({ name:fLabel+" (US + ROW combined)", blocks:[{ sub:null, tables:[top,up] }] });
+    }
   }
   // catch-all group: non-video, US + ROW combined, one list of up to 8.
   // Re-merge by name here (a creative can sit in two funnel groups) so it appears once.
@@ -376,19 +392,20 @@ function controls(){ return {
   rowsN:Math.max(1, parseInt($("rows").value)||15),
   minSales:Math.max(1, parseInt($("minSales").value)||5),
   createdDays:Math.max(1, parseInt($("createdDays").value)||30),
+  geoOn:$("geoOn").checked,
 }; }
 
 function render(){
   if(!DATA) return;
   const c=controls();
-  const groups=buildSections(c.saleKey,c.rowsN,c.minSales,c.createdDays);
+  const groups=buildSections(c.saleKey,c.rowsN,c.minSales,c.createdDays,c.geoOn);
   $("out").innerHTML=dataInfoHtml(c.saleKey,$("since").value,$("until").value)+renderGroups(groups, false);
 }
 
 function downloadCsv(){
   if(!DATA) return;
   const c=controls();
-  const groups=buildSections(c.saleKey,c.rowsN,c.minSales,c.createdDays);
+  const groups=buildSections(c.saleKey,c.rowsN,c.minSales,c.createdDays,c.geoOn);
   const cdate=(r)=> r.created!=null ? new Date(r.created).toISOString().slice(0,10) : "";
   const lines=[];
   for(const t of flatTables(groups)){
@@ -407,7 +424,7 @@ async function makeSnapshot(){
   const btn=$("snap"); const old=btn.textContent; btn.disabled=true; btn.textContent="Building snapshot…";
   try{
     const c=controls();
-    const groups=buildSections(c.saleKey,c.rowsN,c.minSales,c.createdDays);
+    const groups=buildSections(c.saleKey,c.rowsN,c.minSales,c.createdDays,c.geoOn);
     const ids=[...new Set(flatTables(groups).flatMap(t=>t.rows.map(r=>r.id)))];
     // base64 thumbnails from the server (token-side) → snapshot is fully self-contained
     const tr=await fetch(API+"/api/thumbs?ids="+encodeURIComponent(ids.join(",")));
