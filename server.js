@@ -83,7 +83,7 @@ async function pullReport(since, until){
   const metaByAd = new Map();
   await Promise.all(chunk(ids, 50).map(async (b) => {
     const p = new URLSearchParams({ ids: b.join(","),
-      fields: "name,created_time,campaign{name},creative{object_type,video_id,object_story_id,object_story_spec}",
+      fields: "name,created_time,preview_shareable_link,campaign{name},creative{object_type,video_id,object_story_id,object_story_spec}",
       access_token: FB_TOKEN });
     let json = null;
     try { const r = await fbGet(`${FB_GRAPH}/?${p}`); if(!r.error) json = r; } catch(_){}
@@ -92,13 +92,13 @@ async function pullReport(since, until){
       const t = n.created_time ? Date.parse(n.created_time) : NaN;
       const campName = (n.campaign && n.campaign.name) || "";
       metaByAd.set(id, { name: n.name || id, funnel: /FCVSL/i.test(campName) ? "FCVSL" : "Toolkit",
-        created: isNaN(t) ? null : t, ...classify(n.creative || {}) });
+        created: isNaN(t) ? null : t, preview: n.preview_shareable_link || "", ...classify(n.creative || {}) });
     }
   }));
 
   const rows = [...ads].map(([id, a]) => {
-    const m = metaByAd.get(id) || {name:id, funnel:"Toolkit", created:null, isVideo:false, type:"Unknown"};
-    return { id, name:m.name, funnel:m.funnel, acct:a.acct, created:m.created, isVideo:m.isVideo, type:m.type,
+    const m = metaByAd.get(id) || {name:id, funnel:"Toolkit", created:null, isVideo:false, type:"Unknown", preview:""};
+    return { id, name:m.name, funnel:m.funnel, acct:a.acct, created:m.created, isVideo:m.isVideo, type:m.type, preview:m.preview||"",
       US:{spend:Math.round(a.US.spend*100)/100, actions:Object.fromEntries(a.US.actions)},
       ROW:{spend:Math.round(a.ROW.spend*100)/100, actions:Object.fromEntries(a.ROW.actions)} };
   });
@@ -165,6 +165,18 @@ async function pullCreatorsReport(since, until){
   // Fetch thumbnails for matching ads (small set)
   const thumbs = await thumbsBase64(matches.map(r => r.id));
   for (const r of matches) r.thumb = thumbs[r.id] || "";
+
+  // Fetch preview_shareable_link for each matching ad (batched)
+  await Promise.all(chunk(matches.map(r=>r.id), 50).map(async (b) => {
+    const pv = new URLSearchParams({ ids: b.join(","), fields: "preview_shareable_link", access_token: FB_TOKEN });
+    let json = null;
+    try { const r = await fbGet(`${FB_GRAPH}/?${pv}`); if(!r.error) json = r; } catch(_){}
+    for (const id of b){
+      const n = (json && json[id]) || {};
+      const row = matches.find(x => x.id === id);
+      if (row) row.preview = n.preview_shareable_link || "";
+    }
+  }));
 
   return { rows: matches, rows7d };
 }

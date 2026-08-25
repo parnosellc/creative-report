@@ -354,7 +354,8 @@ function tableInner(list, kind, withThumb){
   let ts=0, tc=0;
   list.forEach((r,i)=>{ ts+=r.spend; tc+=r.sales;
     const u=adsManagerUrl(r);
-    const nameCell=u ? "<a href='"+esc(u)+"' target='_blank' rel='noopener'>"+esc(r.name)+"</a>" : esc(r.name);
+    const nameCell=(u ? "<a href='"+esc(u)+"' target='_blank' rel='noopener'>"+esc(r.name)+"</a>" : esc(r.name))
+      + (r.preview ? " <a href='"+esc(r.preview)+"' target='_blank' rel='noopener' title='Preview ad (no account needed)' style='text-decoration:none;font-size:14px;margin-left:4px'>👁</a>" : "");
     h+="<tr>"+(withThumb?"<td>"+thumbCellHtml(r)+"</td>":"")
       + "<td class='adname'><span class='rank'>"+(i+1)+". </span>"+nameCell+"<div class='adid'>"+esc(r.id)+"</div></td>"
       + (isCatch?"<td class='mut'>"+esc(r.type||"")+"</td>":"")

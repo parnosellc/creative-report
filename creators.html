@@ -171,7 +171,8 @@ function render(data, since, until){
         `<span>Hook ${isFinite(ag.hook)?fmtPct(ag.hook):"—"}</span>`,
         `<span>CTR ${isFinite(ag.ctr)?fmtPct(ag.ctr):"—"}</span>`,
       ];
-      return `<div class="ad"><div class="adname" title="${esc(a.name)}"><span class="mtag">🎬</span> ${esc(a.name)}</div><div class="adm">${parts.join("")}</div></div>`;
+      const preview = a.preview ? ` <a href="${esc(a.preview)}" target="_blank" rel="noopener" title="Preview ad (no account needed)" style="text-decoration:none;margin-left:6px">👁</a>` : "";
+      return `<div class="ad"><div class="adname" title="${esc(a.name)}"><span class="mtag">🎬</span> ${esc(a.name)}${preview}</div><div class="adm">${parts.join("")}</div></div>`;
     };
     const topsHtml = topAds.map(adRow).join("");
     const allHtml = allAds.map(adRow).join("");
