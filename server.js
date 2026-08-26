@@ -321,7 +321,10 @@ async function handler(req, res){
   const sub = parts.slice(1); // after secret
 
   // creators (3-series) report UI + API
-  if (sub[0] === "creators" && sub.length === 1) return send(res, 200, "text/html; charset=utf-8", CREATORS_HTML);
+  if (sub[0] === "creators" && sub.length === 1){
+    res.writeHead(200, { "Content-Type":"text/html; charset=utf-8", "Cache-Control":"no-cache, no-store, must-revalidate", "Pragma":"no-cache" });
+    return res.end(CREATORS_HTML);
+  }
   if (sub[0] === "creators" && sub[1] === "api" && sub[2] === "report"){
     try {
       const since = u.searchParams.get("since"), until = u.searchParams.get("until");
@@ -332,7 +335,10 @@ async function handler(req, res){
   }
 
   // live report UI
-  if (sub.length === 0) return send(res, 200, "text/html; charset=utf-8", INDEX_HTML);
+  if (sub.length === 0){
+    res.writeHead(200, { "Content-Type":"text/html; charset=utf-8", "Cache-Control":"no-cache, no-store, must-revalidate", "Pragma":"no-cache" });
+    return res.end(INDEX_HTML);
+  }
 
   if (sub[0] === "api" && sub[1] === "report"){
     try {
