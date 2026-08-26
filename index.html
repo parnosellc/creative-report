@@ -222,7 +222,7 @@ function aggregateAds(rows){
     const cn=cleanAdName(r.name);
     const disp=stripExt(cn);
     const key=r.funnel+"||"+mergeKey(cn);   // case- & extension-insensitive; aspect ratio kept
-    if(!g.has(key)) g.set(key,{ id:r.id, ids:[], acctIds:{}, acct:r.acct, name:disp, funnel:r.funnel, created:r.created, isVideo:r.isVideo, type:r.type, _top:-1, US:{spend:0,actions:{}}, ROW:{spend:0,actions:{}} });
+    if(!g.has(key)) g.set(key,{ id:r.id, ids:[], acctIds:{}, acct:r.acct, name:disp, funnel:r.funnel, created:r.created, isVideo:r.isVideo, type:r.type, preview:r.preview||"", _top:-1, US:{spend:0,actions:{}}, ROW:{spend:0,actions:{}} });
     const x=g.get(key);
     for(const reg of ["US","ROW"]){ x[reg].spend+=r[reg].spend||0; for(const[t,v] of Object.entries(r[reg].actions||{})) x[reg].actions[t]=(x[reg].actions[t]||0)+v; }
     (x.acctIds[r.acct]=x.acctIds[r.acct]||[]).push(r.id);
@@ -274,7 +274,7 @@ function regionRows(region, saleKey){
   return DATA.rows.map(r=>{
     const spend=r[region].spend||0;
     const sales=saleKey?(r[region].actions[saleKey]||0):0;
-    return { id:r.id, name:r.name, funnel:r.funnel, acct:r.acct, created:r.created, isVideo:r.isVideo, type:r.type, spend, sales, cpa: sales>0?spend/sales:Infinity };
+    return { id:r.id, name:r.name, funnel:r.funnel, acct:r.acct, created:r.created, isVideo:r.isVideo, type:r.type, preview:r.preview||"", spend, sales, cpa: sales>0?spend/sales:Infinity };
   });
 }
 function combined(r, saleKey){
@@ -312,7 +312,7 @@ function buildSections(saleKey, rowsN, minSales, createdDays, geoOn){
     for(const [fKey,fLabel] of FUNNELS){
       const all=DATA.rows.filter(r=>r.isVideo && r.funnel===fKey).map(r=>{
         const c=combined(r, saleKey);
-        return { id:r.id, ids:r.ids, name:r.name, funnel:r.funnel, acct:r.acct, created:r.created, isVideo:r.isVideo, type:r.type, spend:c.spend, sales:c.sales, cpa:c.cpa };
+        return { id:r.id, ids:r.ids, name:r.name, funnel:r.funnel, acct:r.acct, created:r.created, isVideo:r.isVideo, type:r.type, preview:r.preview||"", spend:c.spend, sales:c.sales, cpa:c.cpa };
       });
       const top={ title:"Top-spending video ads", kind:"spend", label:fLabel+" — TOP SPENDERS (video, US+ROW combined)",
         rows:all.filter(r=>r.spend>0).sort((a,b)=>b.spend-a.spend).slice(0,rowsN) };
@@ -326,9 +326,9 @@ function buildSections(saleKey, rowsN, minSales, createdDays, geoOn){
   const nvMap=new Map();
   for(const r of DATA.rows.filter(r=>!r.isVideo)){
     const c=combined(r,saleKey);
-    if(!nvMap.has(r.name)) nvMap.set(r.name,{ id:r.id, ids:(r.ids||[r.id]).slice(), name:r.name, acct:r.acct, type:r.type, created:r.created, spend:0, sales:0, _top:-1 });
+    if(!nvMap.has(r.name)) nvMap.set(r.name,{ id:r.id, ids:(r.ids||[r.id]).slice(), name:r.name, acct:r.acct, type:r.type, created:r.created, preview:r.preview||"", spend:0, sales:0, _top:-1 });
     const x=nvMap.get(r.name); x.spend+=c.spend; x.sales+=c.sales;
-    if(c.spend>x._top){ x._top=c.spend; x.id=r.id; x.acct=r.acct; x.ids=(r.ids||[r.id]).slice(); }
+    if(c.spend>x._top){ x._top=c.spend; x.id=r.id; x.acct=r.acct; x.ids=(r.ids||[r.id]).slice(); x.preview=r.preview||x.preview; }
   }
   const nv=[...nvMap.values()].map(r=>({ ...r, cpa: r.sales>0?r.spend/r.sales:Infinity }));
   const spend4=nv.filter(r=>r.spend>0).sort((a,b)=>b.spend-a.spend).slice(0,4).map(r=>({...r,reason:"Top spender"}));
