@@ -223,22 +223,29 @@ function aggregateAds(rows){
     const cn=cleanAdName(r.name);
     const disp=stripExt(cn);
     const key=r.funnel+"||"+mergeKey(cn);   // case- & extension-insensitive; aspect ratio kept
-    if(!g.has(key)) g.set(key,{ id:r.id, ids:[], acctIds:{}, acct:r.acct, name:disp, funnel:r.funnel, created:r.created, isVideo:r.isVideo, type:r.type, preview:r.preview||"", _top:-1, US:{spend:0,actions:{}}, ROW:{spend:0,actions:{}} });
+    if(!g.has(key)) g.set(key,{ id:r.id, ids:[], acctIds:{}, acct:r.acct, name:disp, funnel:r.funnel, created:r.created, isVideo:r.isVideo, type:r.type, preview:r.preview||"", _top:-1,
+      US:{spend:0,impressions:0,linkClicks:0,videoPlays:0,actions:{}}, ROW:{spend:0,impressions:0,linkClicks:0,videoPlays:0,actions:{}} });
     const x=g.get(key);
-    for(const reg of ["US","ROW"]){ x[reg].spend+=r[reg].spend||0; for(const[t,v] of Object.entries(r[reg].actions||{})) x[reg].actions[t]=(x[reg].actions[t]||0)+v; }
+    for(const reg of ["US","ROW"]){
+      x[reg].spend       += r[reg].spend||0;
+      x[reg].impressions += r[reg].impressions||0;
+      x[reg].linkClicks  += r[reg].linkClicks||0;
+      x[reg].videoPlays  += r[reg].videoPlays||0;
+      for(const[t,v] of Object.entries(r[reg].actions||{})) x[reg].actions[t]=(x[reg].actions[t]||0)+v;
+    }
     (x.acctIds[r.acct]=x.acctIds[r.acct]||[]).push(r.id);
     // EARLIEST launch across all merged ad IDs = when this creative first went live.
     // (A relaunched old winner must not inherit its newest ad's date and look "up-n-coming".)
     if(r.created!=null && (x.created==null || r.created<x.created)) x.created=r.created;
     const tot=(r.US.spend||0)+(r.ROW.spend||0);
-    if(tot>x._top){ x._top=tot; x.id=r.id; x.acct=r.acct; x.name=disp; }
+    if(tot>x._top){ x._top=tot; x.id=r.id; x.acct=r.acct; x.name=disp; if(r.preview) x.preview=r.preview; }
     if(r.isVideo) x.isVideo=true;
   }
   const out=[];
   for(const x of g.values()){
-    out.push({ id:x.id, ids:(x.acctIds[x.acct]||[x.id]), name:x.name, funnel:x.funnel, acct:x.acct, created:x.created, isVideo:x.isVideo, type:x.type,
-      US:{spend:Math.round(x.US.spend*100)/100, actions:x.US.actions},
-      ROW:{spend:Math.round(x.ROW.spend*100)/100, actions:x.ROW.actions} });
+    out.push({ id:x.id, ids:(x.acctIds[x.acct]||[x.id]), name:x.name, funnel:x.funnel, acct:x.acct, created:x.created, isVideo:x.isVideo, type:x.type, preview:x.preview||"",
+      US:{spend:Math.round(x.US.spend*100)/100, impressions:x.US.impressions, linkClicks:x.US.linkClicks, videoPlays:x.US.videoPlays, actions:x.US.actions},
+      ROW:{spend:Math.round(x.ROW.spend*100)/100, impressions:x.ROW.impressions, linkClicks:x.ROW.linkClicks, videoPlays:x.ROW.videoPlays, actions:x.ROW.actions} });
   }
   return out;
 }
