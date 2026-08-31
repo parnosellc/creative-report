@@ -53,11 +53,11 @@ async function pullReport(since, until){
   // step 1: ad-level insights by country, parallel accounts, minimal fields
   const ads = new Map();
   const totals = new Map();
-  const ensure = (id) => { if(!ads.has(id)) ads.set(id, {acct:"", US:{spend:0,actions:new Map()}, ROW:{spend:0,actions:new Map()}}); return ads.get(id); };
+  const ensure = (id) => { if(!ads.has(id)) ads.set(id, {acct:"", US:{spend:0,impressions:0,linkClicks:0,videoPlays:0,actions:new Map()}, ROW:{spend:0,impressions:0,linkClicks:0,videoPlays:0,actions:new Map()}}); return ads.get(id); };
 
   await Promise.all(FB_ACCOUNTS.map(async (acct) => {
     const acctNum = acct.replace("act_","");
-    const p = new URLSearchParams({ level:"ad", breakdowns:"country", fields:"ad_id,spend,actions",
+    const p = new URLSearchParams({ level:"ad", breakdowns:"country", fields:"ad_id,spend,impressions,inline_link_clicks,actions,video_play_actions",
       action_attribution_windows: JSON.stringify([ATTRIBUTION]),
       time_range: JSON.stringify({since, until}), limit:"1000", access_token: FB_TOKEN });
     let url = `${FB_GRAPH}/${acct}/insights?${p}`;
@@ -70,6 +70,9 @@ async function pullReport(since, until){
         const region = (r.country === "US") ? "US" : "ROW";
         const a = ensure(id); if(!a.acct) a.acct = acctNum;
         const b = a[region]; b.spend += parseFloat(r.spend)||0;
+        b.impressions += parseInt(r.impressions)||0;
+        b.linkClicks += parseInt(r.inline_link_clicks)||0;
+        b.videoPlays += (r.video_play_actions||[]).reduce((s,x)=>s+actionValue(x, ATTRIBUTION),0);
         for (const act of r.actions || []){ const v = actionValue(act, ATTRIBUTION); if(!v) continue;
           b.actions.set(act.action_type, (b.actions.get(act.action_type)||0)+v);
           totals.set(act.action_type, (totals.get(act.action_type)||0)+v); }
@@ -99,8 +102,8 @@ async function pullReport(since, until){
   const rows = [...ads].map(([id, a]) => {
     const m = metaByAd.get(id) || {name:id, funnel:"Toolkit", created:null, isVideo:false, type:"Unknown", preview:""};
     return { id, name:m.name, funnel:m.funnel, acct:a.acct, created:m.created, isVideo:m.isVideo, type:m.type, preview:m.preview||"",
-      US:{spend:Math.round(a.US.spend*100)/100, actions:Object.fromEntries(a.US.actions)},
-      ROW:{spend:Math.round(a.ROW.spend*100)/100, actions:Object.fromEntries(a.ROW.actions)} };
+      US:{spend:Math.round(a.US.spend*100)/100, impressions:a.US.impressions, linkClicks:a.US.linkClicks, videoPlays:a.US.videoPlays, actions:Object.fromEntries(a.US.actions)},
+      ROW:{spend:Math.round(a.ROW.spend*100)/100, impressions:a.ROW.impressions, linkClicks:a.ROW.linkClicks, videoPlays:a.ROW.videoPlays, actions:Object.fromEntries(a.ROW.actions)} };
   });
   const actionTypes = [...totals].sort((a,b)=>b[1]-a[1]).map(([type,total])=>({type, total:Math.round(total)}));
   let guessFb = "";

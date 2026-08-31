@@ -275,13 +275,28 @@ function regionRows(region, saleKey){
   return DATA.rows.map(r=>{
     const spend=r[region].spend||0;
     const sales=saleKey?(r[region].actions[saleKey]||0):0;
-    return { id:r.id, name:r.name, funnel:r.funnel, acct:r.acct, created:r.created, isVideo:r.isVideo, type:r.type, preview:r.preview||"", spend, sales, cpa: sales>0?spend/sales:Infinity };
+    const imp=r[region].impressions||0;
+    const clicks=r[region].linkClicks||0;
+    const plays=r[region].videoPlays||0;
+    return { id:r.id, name:r.name, funnel:r.funnel, acct:r.acct, created:r.created, isVideo:r.isVideo, type:r.type, preview:r.preview||"",
+      spend, sales, impressions:imp, linkClicks:clicks, videoPlays:plays,
+      cpa: sales>0?spend/sales:Infinity,
+      cpm: imp>0? spend/imp*1000 : NaN,
+      ctr: imp>0? clicks/imp*100 : NaN,
+      hook: (imp>0 && r.isVideo)? plays/imp*100 : NaN };
   });
 }
 function combined(r, saleKey){
   const spend=(r.US.spend||0)+(r.ROW.spend||0);
   const sales=saleKey?((r.US.actions[saleKey]||0)+(r.ROW.actions[saleKey]||0)):0;
-  return { spend, sales, cpa: sales>0?spend/sales:Infinity };
+  const imp=(r.US.impressions||0)+(r.ROW.impressions||0);
+  const clicks=(r.US.linkClicks||0)+(r.ROW.linkClicks||0);
+  const plays=(r.US.videoPlays||0)+(r.ROW.videoPlays||0);
+  return { spend, sales, impressions:imp, linkClicks:clicks, videoPlays:plays,
+    cpa: sales>0?spend/sales:Infinity,
+    cpm: imp>0? spend/imp*1000 : NaN,
+    ctr: imp>0? clicks/imp*100 : NaN,
+    hook: (imp>0 && r.isVideo)? plays/imp*100 : NaN };
 }
 
 const FUNNELS=[["FCVSL","FCVSL · Forced-Consumption VSL"],["Toolkit","Toolkit · Open page"]];
@@ -313,7 +328,7 @@ function buildSections(saleKey, rowsN, minSales, createdDays, geoOn){
     for(const [fKey,fLabel] of FUNNELS){
       const all=DATA.rows.filter(r=>r.isVideo && r.funnel===fKey).map(r=>{
         const c=combined(r, saleKey);
-        return { id:r.id, ids:r.ids, name:r.name, funnel:r.funnel, acct:r.acct, created:r.created, isVideo:r.isVideo, type:r.type, preview:r.preview||"", spend:c.spend, sales:c.sales, cpa:c.cpa };
+        return { id:r.id, ids:r.ids, name:r.name, funnel:r.funnel, acct:r.acct, created:r.created, isVideo:r.isVideo, type:r.type, preview:r.preview||"", spend:c.spend, sales:c.sales, impressions:c.impressions, linkClicks:c.linkClicks, videoPlays:c.videoPlays, cpa:c.cpa, cpm:c.cpm, ctr:c.ctr, hook:c.hook };
       });
       const top={ title:"Top-spending video ads", kind:"spend", label:fLabel+" — TOP SPENDERS (video, US+ROW combined)",
         rows:all.filter(r=>r.spend>0).sort((a,b)=>b.spend-a.spend).slice(0,rowsN) };
@@ -348,8 +363,8 @@ function thumbCellHtml(r){ return r.thumb ? "<img class='thumb' src='"+esc(r.thu
 function tableInner(list, kind, withThumb){
   const isCatch=kind==="catch";
   const lead=(withThumb?1:0)+1+(isCatch?1:0);
-  const cols=lead+3+(isCatch?1:0);
-  let head="<tr>"+(withThumb?"<th></th>":"")+"<th>Ad name</th>"+(isCatch?"<th>Type</th>":"")+"<th>Spend</th><th>Sales</th><th>CPA</th>"+(isCatch?"<th>Pick</th>":"")+"</tr>";
+  const cols=lead+6+(isCatch?1:0);
+  let head="<tr>"+(withThumb?"<th></th>":"")+"<th>Ad name</th>"+(isCatch?"<th>Type</th>":"")+"<th>Spend</th><th>Sales</th><th>CPA</th><th>CTR</th><th>Hook</th><th>CPM</th>"+(isCatch?"<th>Pick</th>":"")+"</tr>";
   let h="<div class='card'><table><thead>"+head+"</thead><tbody>";
   if(!list.length){ h+="<tr><td class='mut' colspan='"+cols+"'>No ads"+(kind==="up"?" with enough sales / recent enough":"")+" in this window.</td></tr>"; }
   let ts=0, tc=0;
@@ -361,10 +376,20 @@ function tableInner(list, kind, withThumb){
       + "<td class='adname'><span class='rank'>"+(i+1)+". </span>"+nameCell+"<div class='adid'>"+esc(r.id)+"</div></td>"
       + (isCatch?"<td class='mut'>"+esc(r.type||"")+"</td>":"")
       + "<td>"+money(r.spend)+"</td><td>"+num(r.sales)+"</td><td>"+cpaTxt(r.spend,r.sales)+"</td>"
+      + "<td>"+(isFinite(r.ctr)?r.ctr.toFixed(2)+"%":"<span class='mut'>—</span>")+"</td>"
+      + "<td>"+(isFinite(r.hook)?r.hook.toFixed(1)+"%":"<span class='mut'>—</span>")+"</td>"
+      + "<td>"+(isFinite(r.cpm)?"$"+r.cpm.toFixed(2):"<span class='mut'>—</span>")+"</td>"
       + (isCatch?"<td class='mut'>"+esc(r.reason||"")+"</td>":"")
       + "</tr>";
   });
-  if(list.length) h+="</tbody><tfoot><tr><td colspan='"+lead+"'>Total</td><td>"+money(ts)+"</td><td>"+num(tc)+"</td><td>"+cpaTxt(ts,tc)+"</td>"+(isCatch?"<td></td>":"")+"</tr></tfoot>";
+  if(list.length){
+    let ti=0,tclk=0,tvp=0,tanyVideo=false;
+    list.forEach(r=>{ ti+=r.impressions||0; tclk+=r.linkClicks||0; tvp+=r.videoPlays||0; if(r.isVideo) tanyVideo=true; });
+    const tctr=ti>0?(tclk/ti*100).toFixed(2)+"%":"—";
+    const thook=(ti>0 && tanyVideo)?(tvp/ti*100).toFixed(1)+"%":"—";
+    const tcpm=ti>0?"$"+(ts/ti*1000).toFixed(2):"—";
+    h+="</tbody><tfoot><tr><td colspan='"+lead+"'>Total</td><td>"+money(ts)+"</td><td>"+num(tc)+"</td><td>"+cpaTxt(ts,tc)+"</td><td>"+tctr+"</td><td>"+thook+"</td><td>"+tcpm+"</td>"+(isCatch?"<td></td>":"")+"</tr></tfoot>";
+  }
   else h+="</tbody>";
   return h+"</table></div>";
 }
