@@ -57,7 +57,7 @@ async function pullReport(since, until){
 
   await Promise.all(FB_ACCOUNTS.map(async (acct) => {
     const acctNum = acct.replace("act_","");
-    const p = new URLSearchParams({ level:"ad", breakdowns:"country", fields:"ad_id,spend,impressions,inline_link_clicks,actions,video_play_actions",
+    const p = new URLSearchParams({ level:"ad", breakdowns:"country", fields:"ad_id,spend,impressions,inline_link_clicks,actions",
       action_attribution_windows: JSON.stringify([ATTRIBUTION]),
       time_range: JSON.stringify({since, until}), limit:"1000", access_token: FB_TOKEN });
     let url = `${FB_GRAPH}/${acct}/insights?${p}`;
@@ -72,7 +72,8 @@ async function pullReport(since, until){
         const b = a[region]; b.spend += parseFloat(r.spend)||0;
         b.impressions += parseInt(r.impressions)||0;
         b.linkClicks += parseInt(r.inline_link_clicks)||0;
-        b.videoPlays += (r.video_play_actions||[]).reduce((s,x)=>s+actionValue(x, ATTRIBUTION),0);
+        // Hook rate: use `video_view` action = Meta's 3-second video plays (not video_play_actions which counts <3s starts too)
+        b.videoPlays += ((r.actions||[]).find(a=>a.action_type==="video_view") ? actionValue((r.actions||[]).find(a=>a.action_type==="video_view"), ATTRIBUTION) : 0);
         for (const act of r.actions || []){ const v = actionValue(act, ATTRIBUTION); if(!v) continue;
           b.actions.set(act.action_type, (b.actions.get(act.action_type)||0)+v);
           totals.set(act.action_type, (totals.get(act.action_type)||0)+v); }
