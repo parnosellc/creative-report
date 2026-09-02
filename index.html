@@ -383,7 +383,7 @@ function tableInner(list, kind, withThumb){
       : esc(r.name)+" <span class='mut' style='font-size:12px'>(error retrieving preview link)</span>";
     const amLink = u ? " · <a href='"+esc(u)+"' target='_blank' rel='noopener' style='color:inherit;text-decoration:underline'>see in ads manager</a>" : "";
     h+="<tr>"+(withThumb?"<td>"+thumbCellHtml(r)+"</td>":"")
-      + "<td class='adname'><span class='rank'>"+(i+1)+". </span>"+nameCell+"<div class='adid'>"+esc(r.id)++amLink+"</div></td>"
+      + "<td class='adname'><span class='rank'>"+(i+1)+". </span>"+nameCell+"<div class='adid'>"+esc(r.id)+amLink+"</div></td>"
       + (isCatch?"<td class='mut'>"+esc(r.type||"")+"</td>":"")
       + "<td>"+money(r.spend)+"</td><td>"+num(r.sales)+"</td><td>"+cpaTxt(r.spend,r.sales)+"</td>"
       + "<td>"+(isFinite(r.ctr)?r.ctr.toFixed(2)+"%":"<span class='mut'>—</span>")+"</td>"
