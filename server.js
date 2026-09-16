@@ -369,6 +369,20 @@ async function handler(req, res){
     } catch(e){ return json(res, 500, { error: e.message }); }
   }
 
+
+  if (sub[0] === "api" && sub[1] === "graph") {
+    try {
+      if (!FB_TOKEN) throw new Error("Server missing CPR_FB_TOKEN.");
+      const graphPath = u.searchParams.get("path");
+      if (!graphPath) throw new Error("Missing ?path= param.");
+      const params = new URLSearchParams(u.search);
+      params.delete("path");
+      params.set("access_token", FB_TOKEN);
+      const result = await fbGet(`${FB_GRAPH}${graphPath}?${params}`);
+      return json(res, 200, result);
+    } catch(e){ return json(res, 500, { error: e.message }); }
+  }
+
   return send(res, 404, "text/plain", "Not found.");
 }
 
