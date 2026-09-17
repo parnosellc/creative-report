@@ -447,8 +447,8 @@ function downloadCsv(){
   const lines=[];
   for(const t of flatTables(groups)){
     lines.push(t.label);
-    lines.push("Rank,Ad name,Ad ID,Type,Created,Spend,Sales,CPA,Pick,Ads Manager URL");
-    t.rows.forEach((r,i)=>lines.push([i+1,'"'+String(r.name).replace(/"/g,'""')+'"',r.id,r.type||"",cdate(r),r.spend.toFixed(2),Math.round(r.sales),r.sales>0?(r.spend/r.sales).toFixed(2):"",r.reason||"",'"'+adsManagerUrl(r)+'"'].join(",")));
+    lines.push("Rank,Ad name,Ad ID,Type,Created,Spend,Sales,CPA,Pick,Ads Manager URL,Preview URL");
+    t.rows.forEach((r,i)=>lines.push([i+1,'"'+String(r.name).replace(/"/g,'""')+'"',r.id,r.type||"",cdate(r),r.spend.toFixed(2),Math.round(r.sales),r.sales>0?(r.spend/r.sales).toFixed(2):"",r.reason||"",'"'+adsManagerUrl(r)+'"','"'+(r.preview||"")+'"'].join(",")));
     lines.push("");
   }
   const a=document.createElement("a"); a.href=URL.createObjectURL(new Blob([lines.join("\n")],{type:"text/csv"}));
@@ -490,7 +490,7 @@ function buildSnapshotDoc(groups, meta){
   // data embedded for the viewer's CSV download (no token, no API)
   const flat=flatTables(groups).map(t=>({ label:t.label, rows:t.rows.map(r=>({
     n:r.name, id:r.id, type:r.type||"", created:r.created!=null?new Date(r.created).toISOString().slice(0,10):"",
-    spend:r.spend, sales:r.sales, reason:r.reason||"", acct:r.acct||"" })) }));
+    spend:r.spend, sales:r.sales, reason:r.reason||"", acct:r.acct||"", preview:r.preview||"" })) }));
   const dataJson=JSON.stringify(flat).replace(/</g,"\\u003c");
   const header="<h1>Creative Performance — Snapshot</h1>"
     + dataInfoHtml(meta.saleEvent, meta.since, meta.until)
@@ -508,10 +508,10 @@ const SNAP_SCRIPT=`
     var lines=[];
     for(var ti=0;ti<SNAP_DATA.length;ti++){ var t=SNAP_DATA[ti];
       lines.push(t.label);
-      lines.push('Rank,Ad name,Ad ID,Type,Created,Spend,Sales,CPA,Pick,Ads Manager URL');
+      lines.push('Rank,Ad name,Ad ID,Type,Created,Spend,Sales,CPA,Pick,Ads Manager URL,Preview URL');
       for(var i=0;i<t.rows.length;i++){ var r=t.rows[i];
         var url=r.acct?('https://business.facebook.com/adsmanager/manage/ads?act='+r.acct+'&selected_ad_ids='+r.id):'';
-        lines.push([i+1,'"'+String(r.n).replace(/"/g,'""')+'"',r.id,r.type,r.created,Number(r.spend).toFixed(2),Math.round(r.sales),r.sales>0?(r.spend/r.sales).toFixed(2):'',r.reason,'"'+url+'"'].join(','));
+        lines.push([i+1,'"'+String(r.n).replace(/"/g,'""')+'"',r.id,r.type,r.created,Number(r.spend).toFixed(2),Math.round(r.sales),r.sales>0?(r.spend/r.sales).toFixed(2):'',r.reason,'"'+url+'"','"'+(r.preview||'')+'"'].join(','));
       }
       lines.push('');
     }
